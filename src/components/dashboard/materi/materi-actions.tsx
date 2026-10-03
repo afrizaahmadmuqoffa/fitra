@@ -18,6 +18,7 @@ import {
   analyzeMaterialAgainAction,
   publishMaterialAction,
 } from "@/actions/materials";
+import { jalankanAction } from "@/lib/action-helpers";
 
 export function MateriActions({
   materialId,
@@ -39,29 +40,33 @@ export function MateriActions({
 
   async function run(kind: "proses" | "terbitkan") {
     setBusy(kind);
-    const result =
-      kind === "proses"
-        ? await analyzeMaterialAgainAction(materialId)
-        : await publishMaterialAction(materialId);
-    setBusy(null);
+    try {
+      const result = await jalankanAction(() =>
+        kind === "proses"
+          ? analyzeMaterialAgainAction(materialId)
+          : publishMaterialAction(materialId),
+      );
 
-    if (!result.ok) {
-      toast.error("Aksi gagal", { description: result.message });
-      return;
-    }
+      if (!result.ok) {
+        toast.error("Aksi gagal", { description: result.message });
+        return;
+      }
 
-    if (kind === "proses") {
-      toast.success(result.message, {
-        description:
-          "Struktur bab dianalisis ulang dari teks materi yang tersimpan di server.",
-      });
-    } else {
-      toast.success(result.message, {
-        description: `${approvedCount} versi adaptasi yang disetujui kini tampil di layar siswa.`,
-      });
-      setConfirmPublish(false);
+      if (kind === "proses") {
+        toast.success(result.message, {
+          description:
+            "Struktur bab dianalisis ulang dari teks materi yang tersimpan di server.",
+        });
+      } else {
+        toast.success(result.message, {
+          description: `${approvedCount} versi adaptasi yang disetujui kini tampil di layar siswa.`,
+        });
+        setConfirmPublish(false);
+      }
+      router.refresh();
+    } finally {
+      setBusy(null);
     }
-    router.refresh();
   }
 
   return (

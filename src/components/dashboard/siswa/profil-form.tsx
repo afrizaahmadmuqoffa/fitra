@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { saveStudentProfileAction } from "@/actions/students";
+import { jalankanAction } from "@/lib/action-helpers";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -234,21 +235,26 @@ export function ProfilForm({
       setStep(3);
       return;
     }
-    setPending(true);
-    const result = await saveStudentProfileAction({ studentId, values: data });
-    setPending(false);
+setPending(true);
+    try {
+      const result = await jalankanAction(() =>
+        saveStudentProfileAction({ studentId, values: data }),
+      );
 
-    if (!result.ok) {
-      toast.error("Profil belum tersimpan", { description: result.message });
-      return;
+      if (!result.ok) {
+        toast.error("Profil belum tersimpan", { description: result.message });
+        return;
+      }
+
+      toast.success(result.message, {
+        description:
+          "Materi yang pernah terbit ditandai perlu ditinjau ulang agar tetap sesuai profil terbaru.",
+      });
+      router.push(`/dashboard/siswa/${studentId}`);
+      router.refresh();
+    } finally {
+      setPending(false);
     }
-
-    toast.success(result.message, {
-      description:
-        "Materi yang pernah terbit ditandai perlu ditinjau ulang agar tetap sesuai profil terbaru.",
-    });
-    router.push(`/dashboard/siswa/${studentId}`);
-    router.refresh();
   }
 
   return (

@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { createClassAction } from "@/actions/classes";
+import { jalankanAction } from "@/lib/action-helpers";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
@@ -49,24 +50,27 @@ export function KelasToolbar({ grade }: { grade: string }) {
   });
   const selectedGrade = useWatch({ control: form.control, name: "grade" });
 
-  async function onSubmit(values: ClassInput) {
+async function onSubmit(values: ClassInput) {
     setPending(true);
-    const result = await createClassAction(values);
-    setPending(false);
+    try {
+      const result = await jalankanAction(() => createClassAction(values));
 
-    if (!result.ok) {
-      toast.error("Kelas belum tersimpan", { description: result.message });
-      return;
+      if (!result.ok) {
+        toast.error("Kelas belum tersimpan", { description: result.message });
+        return;
+      }
+
+      toast.success(result.message, {
+        description:
+          "Siswa dan materi bisa ditambahkan dari halaman kelas ini. QR pribadi dibuat dari halaman kartu QR kelas.",
+      });
+      setOpen(false);
+      form.reset();
+      router.push("/dashboard/kelas");
+      router.refresh();
+    } finally {
+      setPending(false);
     }
-
-    toast.success(result.message, {
-      description:
-        "Siswa dan materi bisa ditambahkan dari halaman kelas ini. QR pribadi dibuat dari halaman kartu QR kelas.",
-    });
-    setOpen(false);
-    form.reset();
-    router.push("/dashboard/kelas");
-    router.refresh();
   }
 
   return (

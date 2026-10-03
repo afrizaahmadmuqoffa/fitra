@@ -2,76 +2,17 @@
 
 import { revalidatePath } from "next/cache";
 import { and, eq, inArray } from "drizzle-orm";
-import { z } from "zod";
 import { requireAuthContext } from "@/lib/auth";
 import { withRlsDb } from "@/db/rls";
 import { classStudents, students, studentProfiles } from "@/db/schema";
 import {
-  disabilityTypeSchema,
-  skillLevelSchema,
+  studentCreateSchema,
+  studentProfileFormSchema,
 } from "@/lib/validation";
 import type { SkillLevel } from "@/db/types";
 import type { ActionResult } from "./auth";
 
 const fail = (message: string): ActionResult => ({ ok: false, message });
-
-const preferenceSchema = z.enum(["visual", "audio", "kinestetik"]);
-const interactionSchema = z.enum(["touch", "speech", "keyboard", "switch", "drag"]);
-const navStyleSchema = z.enum(["step", "scroll", "tap"]);
-const audioSpeedSchema = z.enum(["slow", "normal", "fast"]);
-
-export const studentCreateSchema = z.object({
-  fullName: z.string().min(2, "Nama minimal 2 karakter").max(80),
-  nickname: z.string().max(24).optional().or(z.literal("")),
-  age: z.number().int().min(3, "Usia minimal 3 tahun").max(25, "Usia maksimal 25 tahun"),
-  gender: z.enum(["L", "P"], { message: "Pilih jenis kelamin" }),
-  disabilityType: disabilityTypeSchema,
-  classIds: z.array(z.string().uuid()),
-  notes: z.string().max(400).optional().or(z.literal("")),
-  academicLevel: skillLevelSchema,
-  preferences: z.array(preferenceSchema).min(1, "Pilih minimal satu preferensi belajar"),
-  interactions: z
-    .array(interactionSchema)
-    .min(1, "Pilih minimal satu bentuk interaksi"),
-  fontSize: skillLevelSchema,
-  contrastMode: z.enum(["normal", "high"]),
-  audioEnabled: z.boolean(),
-  audioSpeed: audioSpeedSchema,
-  navStyle: navStyleSchema,
-});
-
-export type StudentCreateInput = z.infer<typeof studentCreateSchema>;
-
-export const studentProfileFormSchema = z.object({
-  membaca: skillLevelSchema,
-  menulis: skillLevelSchema,
-  berhitung: skillLevelSchema,
-  academicNotes: z.string().max(600).optional().or(z.literal("")),
-  mengenaliOrang: skillLevelSchema,
-  bekerjaSama: skillLevelSchema,
-  mengaturEmosi: skillLevelSchema,
-  socialNotes: z.string().max(600).optional().or(z.literal("")),
-  motorHalus: skillLevelSchema,
-  motorKasar: skillLevelSchema,
-  motorNotes: z.string().max(600).optional().or(z.literal("")),
-  dressed: skillLevelSchema,
-  makan: skillLevelSchema,
-  menggunakanAlat: skillLevelSchema,
-  independenceNotes: z.string().max(600).optional().or(z.literal("")),
-  preferences: z.array(preferenceSchema).min(1, "Pilih minimal satu preferensi belajar"),
-  interactions: z
-    .array(interactionSchema)
-    .min(1, "Pilih minimal satu bentuk interaksi"),
-  fontSize: skillLevelSchema,
-  contrastMode: z.enum(["normal", "high"]),
-  audioEnabled: z.boolean(),
-  audioSpeed: audioSpeedSchema,
-  navStyle: navStyleSchema,
-  strengths: z.array(z.string().max(60)).max(12),
-  barriers: z.array(z.string().max(60)).max(12),
-});
-
-export type StudentProfileFormInput = z.infer<typeof studentProfileFormSchema>;
 
 function joinNotes(...parts: (string | undefined | null)[]): string {
   return parts

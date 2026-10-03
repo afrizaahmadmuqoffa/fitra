@@ -47,6 +47,7 @@ import {
 } from "lucide-react";
 import type { ClassRoom, Student } from "@/db/types";
 import { createMaterialAction } from "@/actions/materials";
+import { jalankanAction } from "@/lib/action-helpers";
 
 const MAX_SIZE = 20 * 1024 * 1024;
 const MAX_TEXT = 20000;
@@ -137,33 +138,38 @@ export function MateriUploadForm({
       return;
     }
 setRunning(true);
-    const targetStudentIds = targetStudentsWatch;
+    try {
+      const targetStudentIds = targetStudentsWatch;
 
-    const result = await createMaterialAction({
-      values: {
-        title: values.title,
-        subject: values.subject ?? "",
-        classId: values.classId ?? "",
-        text: values.sourceText ?? "",
-        targetStudentIds,
-      },
-      file: mode === "file" ? file : null,
-    });
-    setRunning(false);
+      const result = await jalankanAction(() =>
+        createMaterialAction({
+          values: {
+            title: values.title,
+            subject: values.subject ?? "",
+            classId: values.classId ?? "",
+            text: values.sourceText ?? "",
+            targetStudentIds,
+          },
+          file: mode === "file" ? file : null,
+        }),
+      );
 
-    if (!result.ok) {
-      toast.error("Materi belum tersimpan", { description: result.message });
-      return;
+      if (!result.ok) {
+        toast.error("Materi belum tersimpan", { description: result.message });
+        return;
+      }
+
+      toast.success(result.message, {
+        description:
+          targetStudentIds.length > 0
+            ? `${targetStudentIds.length} siswa masuk antrean adaptasi. Versi adaptasi akan lahir sebagai draft dan perlu Anda setujui.`
+            : "Struktur materi sudah dianalisis. Pilih kelas atau siswa target bila ingin materi langsung diadaptasi.",
+      });
+      router.push("/dashboard/materi");
+      router.refresh();
+    } finally {
+      setRunning(false);
     }
-
-    toast.success(result.message, {
-      description:
-        targetStudentIds.length > 0
-          ? `${targetStudentIds.length} siswa masuk antrean adaptasi. Versi adaptasi akan lahir sebagai draft dan perlu Anda setujui.`
-          : "Struktur materi sudah dianalisis. Pilih kelas atau siswa target bila ingin materi langsung diadaptasi.",
-    });
-    router.push("/dashboard/materi");
-    router.refresh();
   }
 
   return (

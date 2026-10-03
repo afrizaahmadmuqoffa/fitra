@@ -4,6 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createStudentAction } from "@/actions/students";
+import { jalankanAction } from "@/lib/action-helpers";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
@@ -150,27 +151,30 @@ export function SiswaForm({ classes }: { classes: ClassRoom[] }) {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  async function onSubmit(values: FormValues) {
+async function onSubmit(values: FormValues) {
     setPending(true);
-    const result = await createStudentAction(values);
-    setPending(false);
+    try {
+      const result = await jalankanAction(() => createStudentAction(values));
 
-    if (!result.ok) {
-      toast.error("Siswa belum tersimpan", { description: result.message });
-      return;
+      if (!result.ok) {
+        toast.error("Siswa belum tersimpan", { description: result.message });
+        return;
+      }
+
+      const kelas = classes
+        .filter((c) => values.classIds.includes(c.id))
+        .map((c) => c.name);
+      toast.success(result.message, {
+        description:
+          kelas.length > 0
+            ? `Bergabung ke ${kelas.join(", ")}. Profil awal siap sebagai bahan adaptasi.`
+            : "Profil awal siap sebagai bahan adaptasi. Tambahkan siswa ke kelas agar bisa mendapat akses QR.",
+      });
+      router.push("/dashboard/siswa");
+      router.refresh();
+    } finally {
+      setPending(false);
     }
-
-    const kelas = classes
-      .filter((c) => values.classIds.includes(c.id))
-      .map((c) => c.name);
-    toast.success(result.message, {
-      description:
-        kelas.length > 0
-          ? `Bergabung ke ${kelas.join(", ")}. Profil awal siap sebagai bahan adaptasi.`
-          : "Profil awal siap sebagai bahan adaptasi. Tambahkan siswa ke kelas agar bisa mendapat akses QR.",
-    });
-    router.push("/dashboard/siswa");
-    router.refresh();
   }
 
   return (

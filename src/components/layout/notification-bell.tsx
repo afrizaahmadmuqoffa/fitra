@@ -14,6 +14,7 @@ import {
   markAllNotificationsReadAction,
   markNotificationReadAction,
 } from "@/actions/notifications";
+import { jalankanAction } from "@/lib/action-helpers";
 
 const ICONS: Record<NotificationType, typeof Bell> = {
   ai_done: Sparkles,
@@ -52,26 +53,29 @@ export function NotificationBell({
 
   const [busy, setBusy] = React.useState(false);
 
-  const markAllRead = async () => {
+const markAllRead = async () => {
     setBusy(true);
     // Optimistic: tampilkan dulu, lalu konfirmasi ke server.
     setItems((prev) => prev.map((n) => ({ ...n, isRead: true })));
-    const result = await markAllNotificationsReadAction();
-    setBusy(false);
-    if (!result.ok) {
-      setItems(initialNotifications.slice(0, 30));
-      toast.error("Notifikasi belum ditandai", { description: result.message });
-      return;
+    try {
+      const result = await jalankanAction(() => markAllNotificationsReadAction());
+      if (!result.ok) {
+        setItems(initialNotifications.slice(0, 30));
+        toast.error("Notifikasi belum ditandai", { description: result.message });
+        return;
+      }
+      toast.success(result.message);
+      router.refresh();
+    } finally {
+      setBusy(false);
     }
-    toast.success(result.message);
-    router.refresh();
   };
 
   const openItem = async (id: string) => {
     setItems((prev) =>
       prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)),
     );
-    await markNotificationReadAction(id);
+    await jalankanAction(() => markNotificationReadAction(id));
     router.refresh();
   };
 

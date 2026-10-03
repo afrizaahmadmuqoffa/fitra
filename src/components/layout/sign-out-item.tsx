@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import * as React from "react";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { signOutAction } from "@/actions/auth";
+import { jalankanAction } from "@/lib/action-helpers";
 import { toast } from "sonner";
 
 export function SignOutItem() {
@@ -16,9 +17,9 @@ export function SignOutItem() {
       disabled={pending}
       onSelect={async () => {
         setPending(true);
-        const result = await signOutAction();
+        const result = await jalankanAction(() => signOutAction());
+        setPending(false);
         if (!result.ok) {
-          setPending(false);
           toast.error(result.message);
           return;
         }

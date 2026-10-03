@@ -11,6 +11,7 @@ import {
   updateNotificationPreferencesAction,
   updateTeacherProfileAction,
 } from "@/actions/auth";
+import { jalankanAction } from "@/lib/action-helpers";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -86,36 +87,44 @@ export function SettingsForm({ teacher }: { teacher: TeacherProfile }) {
 
   async function onSubmit(values: AccountInput) {
     setSavingProfile(true);
-    const result = await updateTeacherProfileAction(values);
-    setSavingProfile(false);
+    try {
+      const result = await jalankanAction(() => updateTeacherProfileAction(values));
 
-    if (!result.ok) {
-      toast.error("Profil belum tersimpan", { description: result.message });
-      return;
+      if (!result.ok) {
+        toast.error("Profil belum tersimpan", { description: result.message });
+        return;
+      }
+      toast.success(result.message, {
+        description:
+          "Perubahan ini tampil pada kop dokumen PPI dan materi yang Anda terbitkan.",
+      });
+      router.refresh();
+    } finally {
+      setSavingProfile(false);
     }
-    toast.success(result.message, {
-      description:
-        "Perubahan ini tampil pada kop dokumen PPI dan materi yang Anda terbitkan.",
-    });
-    router.refresh();
   }
 
   async function savePreferences() {
     setSavingPrefs(true);
-    const result = await updateNotificationPreferencesAction({
-      notifyAiDone: notifications.ai_done,
-      notifyReview: notifications.review,
-      notifySession: notifications.session,
-      dailyDigest: digest === "harian",
-    });
-    setSavingPrefs(false);
+    try {
+      const result = await jalankanAction(() =>
+        updateNotificationPreferencesAction({
+          notifyAiDone: notifications.ai_done,
+          notifyReview: notifications.review,
+          notifySession: notifications.session,
+          dailyDigest: digest === "harian",
+        }),
+      );
 
-    if (!result.ok) {
-      toast.error("Preferensi belum tersimpan", { description: result.message });
-      return;
+      if (!result.ok) {
+        toast.error("Preferensi belum tersimpan", { description: result.message });
+        return;
+      }
+      toast.success(result.message);
+      router.refresh();
+    } finally {
+      setSavingPrefs(false);
     }
-    toast.success(result.message);
-    router.refresh();
   }
 
   async function savePassword() {
@@ -129,10 +138,12 @@ export function SettingsForm({ teacher }: { teacher: TeacherProfile }) {
     }
 
     setSavingPassword(true);
-    const result = await changePasswordAction({
-      currentPassword: password.current,
-      newPassword: password.next,
-    });
+    const result = await jalankanAction(() =>
+      changePasswordAction({
+        currentPassword: password.current,
+        newPassword: password.next,
+      }),
+    );
     setSavingPassword(false);
 
     if (!result.ok) {

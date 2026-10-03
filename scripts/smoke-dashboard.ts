@@ -100,6 +100,18 @@ async function main() {
     );
   }
 
+  // Uji sehat Server Action: modul "use server" hanya gagal saat dipanggil.
+  const selftest = await fetchPage("/api/selftest", cookies);
+  const actionHealthy =
+    selftest.status === 200 &&
+    selftest.html.includes("termuat") &&
+    selftest.html.includes("validationRejectedInvalidInput");
+  check(
+    "server action bisa dipanggil",
+    actionHealthy,
+    actionHealthy ? "modul termuat" : `status ${selftest.status}`,
+  );
+
   // Halaman pupil harus menolak guru yang tidak punya token.
   const guard = await fetchPage("/dashboard", undefined, "manual");
   check(

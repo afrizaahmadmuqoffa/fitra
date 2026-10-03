@@ -18,6 +18,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { generateTokenAction, toggleTokenAction } from "@/actions/tokens";
+import { jalankanAction } from "@/lib/action-helpers";
 import {
   Download,
   KeyRound,
@@ -104,34 +105,41 @@ function QrCard({
   const accessUrl = data.plaintext ? `${data.origin}/belajar/${data.plaintext}` : null;
   const lastUsed = data.lastUsedAt ? formatDate(data.lastUsedAt) : null;
 
-  async function createToken() {
+async function createToken() {
     setPending(true);
-    const result = await generateTokenAction({
-      classId: data.classId,
-      studentId: data.studentId,
-    });
-    setPending(false);
+    try {
+      const result = await jalankanAction(() =>
+        generateTokenAction({
+          classId: data.classId,
+          studentId: data.studentId,
+        }),
+      );
 
-    if (!result.ok || !result.token) {
-      toast.error("Token gagal dibuat", { description: result.message });
-      return;
+      if (!result.ok || !result.token) {
+        toast.error("Token gagal dibuat", { description: result.message });
+        return;
+      }
+      onReveal({
+        studentId: data.studentId,
+        classId: data.classId,
+        studentName: data.studentName,
+        token: result.token,
+      });
+      router.refresh();
+    } finally {
+      setPending(false);
     }
-    onReveal({
-      studentId: data.studentId,
-      classId: data.classId,
-      studentName: data.studentName,
-      token: result.token,
-    });
-    router.refresh();
   }
 
   async function toggleAccess() {
     const next = !active;
     setActive(next);
-    const result = await toggleTokenAction({
-      tokenId: data.tokenId ?? "",
-      isActive: next,
-    });
+    const result = await jalankanAction(() =>
+      toggleTokenAction({
+        tokenId: data.tokenId ?? "",
+        isActive: next,
+      }),
+    );
     if (!result.ok) {
       setActive(!next);
       toast.error("Token gagal diubah", { description: result.message });
