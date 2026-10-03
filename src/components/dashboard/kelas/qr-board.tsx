@@ -53,35 +53,46 @@ function formatDate(iso: string) {
   }).format(new Date(iso));
 }
 
-function useQrDataUrl(token: string | null) {
+/**
+ * Tautan akses yang dipindai QR dan ditampilkan pada kartu.
+ *
+ * QR sengaja memuat tautan lengkap, bukan token telanjang, supaya kamera
+ * langsung membuka layar belajar tanpa perlu menyusun alamat sendiri.
+ */
+function buildAccessUrl(origin: string, token: string): string {
+  return `${origin.replace(/\/$/, "")}/belajar/${token}`;
+}
+
+/** Hook ini menerima teks apa pun yang akan dipindai: tautan, bukan token. */
+function useQrDataUrl(payload: string | null) {
   const [result, setResult] = React.useState<{
     token: string | null;
     src: string | null;
-  }>({ token, src: null });
+  }>({ token: payload, src: null });
 
   React.useEffect(() => {
-    if (!token) return;
+    if (!payload) return;
     let active = true;
-    QRCode.toDataURL(token, {
+    QRCode.toDataURL(payload, {
       width: 640,
       margin: 2,
       errorCorrectionLevel: "M",
       color: { dark: "#14332f", light: "#ffffff" },
     })
       .then((url) => {
-        if (active) setResult({ token, src: url });
+        if (active) setResult({ token: payload, src: url });
       })
       .catch(() => {
-        if (active) setResult({ token, src: null });
+        if (active) setResult({ token: payload, src: null });
       });
 return () => {
       active = false;
     };
-  }, [token]);
+  }, [payload]);
 
-  // Hasil milik token lain tidak pernah ditampilkan, sehingga kartu yang
+  // Hasil milik tautan lain tidak pernah ditampilkan, sehingga kartu yang
   // tokennya baru dibuat/dirotasi langsung menampilkan QR-nya sendiri.
-  return result.token === token ? result.src : null;
+  return result.token === payload ? result.src : null;
 }
 
 type RevealState = {
@@ -89,6 +100,7 @@ type RevealState = {
   classId: string;
   studentName: string;
   token: string;
+  origin: string;
 };
 
 function QrCard({
@@ -101,8 +113,9 @@ function QrCard({
   const router = useRouter();
   const [pending, setPending] = React.useState(false);
   const [active, setActive] = React.useState(data.isActive);
-  const src = useQrDataUrl(data.plaintext);
-  const accessUrl = data.plaintext ? `${data.origin}/belajar/${data.plaintext}` : null;
+  // QR memuat tautan lengkap agar kamera langsung membuka layar belajar.
+  const accessUrl = data.plaintext ? buildAccessUrl(data.origin, data.plaintext) : null;
+  const src = useQrDataUrl(accessUrl);
   const lastUsed = data.lastUsedAt ? formatDate(data.lastUsedAt) : null;
 
 async function createToken() {
@@ -124,6 +137,7 @@ async function createToken() {
         classId: data.classId,
         studentName: data.studentName,
         token: result.token,
+        origin: data.origin,
       });
       router.refresh();
     } finally {
@@ -180,14 +194,14 @@ async function createToken() {
             <img
               src={src}
               alt={`Kode QR akses belajar ${data.studentName}`}
-              className="size-40"
-              width={160}
-              height={160}
+              className="size-48"
+              width={192}
+              height={192}
             />
           ) : (
-            <div className="grid size-40 place-items-center rounded-md bg-muted px-2 text-center text-xs text-muted-foreground">
+            <div className="grid size-48 place-items-center rounded-md bg-muted px-3 text-center text-xs text-muted-foreground">
               {data.tokenId
-                ? "Token tersimpan sebagai hash. Buat ulang untuk melihat kode QR."
+                ? "Tautan tersimpan sebagai hash. Buat ulang untuk melihat kode QR."
                 : "Belum ada token untuk siswa ini."}
             </div>
           )}
@@ -200,10 +214,15 @@ async function createToken() {
           </p>
         </div>
 
-        {data.plaintext ? (
-          <Badge variant="outline" className="font-mono text-[0.65rem]">
-            {data.plaintext}
-          </Badge>
+        {accessUrl ? (
+          <div className="w-full space-y-1">
+            <p className="text-[0.6rem] uppercase tracking-wide text-muted-foreground">
+              Pindai dengan kamera, atau buka tautan ini bila QR tidak terbaca
+            </p>
+            <p className="font-mono text-[0.6rem] leading-relaxed break-all text-foreground/80">
+              {accessUrl}
+            </p>
+          </div>
         ) : (
           <Badge variant="secondary" className="text-[0.65rem]">
             Teks token tersimpan sebagai hash
@@ -280,7 +299,8 @@ export function QrBoard({ data }: { data: QrCardData[] }) {
     ),
   );
   const [dialog, setDialog] = React.useState<RevealState | null>(null);
-  const dialogSrc = useQrDataUrl(dialog?.token ?? null);
+  const dialogUrl = dialog ? buildAccessUrl(dialog.origin, dialog.token) : null;
+  const dialogSrc = useQrDataUrl(dialogUrl);
 
   const merged = data.map((item) => {
     const local = revealed[item.studentId];
@@ -305,10 +325,10 @@ export function QrBoard({ data }: { data: QrCardData[] }) {
   }
 
   function copyDialogLink() {
-    if (!dialog) return;
+    if (!dialogUrl) return;
     void navigator.clipboard
-      .writeText(`${window.location.origin}/belajar/${dialog.token}`)
-      .then(() => toast.success("Tautan akses disalin"))
+      .writeText(dialogUrl)
+      .then(() => toast.success("Tautan akses disalin", { description: dialogUrl }))
       .catch(() => toast.error("Peramban tidak mengizinkan penyalinan otomatis"));
   }
 
@@ -316,8 +336,8 @@ export function QrBoard({ data }: { data: QrCardData[] }) {
     <div className="space-y-4">
       <div className="no-print flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/40 px-4 py-3">
         <p className="text-sm text-muted-foreground">
-          {activeCount} dari {merged.length} token aktif. Cetak kartu QR yang tampil lalu
-          tempel di meja siswa atau di lanyard bawaan kelas.
+          {activeCount} dari {merged.length} token aktif. Kode QR memuat tautan lengkap
+          ke layar belajar, jadi siswa cukup memindai dengan kamera ponsel.
         </p>
         <Button
           onClick={() => window.print()}
@@ -338,18 +358,18 @@ export function QrBoard({ data }: { data: QrCardData[] }) {
 
       <p className="no-print flex items-start gap-2 rounded-lg bg-info/8 p-4 text-xs leading-relaxed text-muted-foreground">
         <QrIcon className="mt-0.5 size-4 shrink-0 text-info" aria-hidden="true" />
-        Token adalah kunci acak 32 karakter yang hanya disimpan sebagai hash SHA-256 di
-        server. Teks token muncul kembali setiap kali Anda membuat atau merotasi token,
-        jadi cetak atau simpan tautannya sebelum meninggalkan halaman ini.
+        Tautan akses memakai kunci acak 32 karakter yang hanya disimpan sebagai hash
+        SHA-256 di server. Teks tautannya muncul kembali setiap kali Anda membuat atau
+        merotasi token, jadi cetak atau simpan sebelum meninggalkan halaman ini.
       </p>
 
       <Dialog open={Boolean(dialog)} onOpenChange={(open) => !open && setDialog(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Token QR {dialog?.studentName}</DialogTitle>
+            <DialogTitle>Kartu QR {dialog?.studentName}</DialogTitle>
             <DialogDescription>
-              Cetak kartu ini sekarang. Teks token tidak bisa ditampilkan lagi setelah
-              Anda menutup dialog karena server hanya menyimpan hash-nya.
+              Cetak kartu ini sekarang. Tautan aksesnya tidak bisa ditampilkan lagi
+              setelah Anda menutup dialog karena server hanya menyimpan hash token.
             </DialogDescription>
           </DialogHeader>
 
@@ -370,13 +390,18 @@ export function QrBoard({ data }: { data: QrCardData[] }) {
                 </div>
               )}
             </div>
-            <Badge variant="outline" className="font-mono text-[0.65rem]">
-              {dialog?.token}
-            </Badge>
-            <p className="text-center text-xs text-muted-foreground">
-              <ShieldCheck className="mr-1 inline size-3.5" aria-hidden="true" />
-              Tautan siswa: /belajar/{dialog?.token}
-            </p>
+            <div className="w-full space-y-1 text-center">
+              <p className="text-[0.6rem] uppercase tracking-wide text-muted-foreground">
+                Tautan yang dipindai
+              </p>
+              <p className="font-mono text-[0.65rem] leading-relaxed break-all">
+                {dialogUrl}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                <ShieldCheck className="mr-1 inline size-3.5" aria-hidden="true" />
+                Siswa cukup memindai; tanpa kamera, tautan di atas bisa diketik manual.
+              </p>
+            </div>
           </div>
 
           <DialogFooter className="sm:justify-center">

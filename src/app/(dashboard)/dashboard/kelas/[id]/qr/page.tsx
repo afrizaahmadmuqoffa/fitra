@@ -29,6 +29,9 @@ export default async function ClassQrPage({
     readRevealedTokens(id),
   ]);
   const tokenByStudent = new Map(tokens.map((token) => [token.studentId, token]));
+  // Domain yang dipindai QR sengaja diambil dari NEXT_PUBLIC_APP_URL, bukan
+  // dari host yang sedang dibuka. Kalau memakai host, QR yang dicetak dari
+  // pratinjau Vercel akan mengabadikan domain yang cepat kedaluwarsa.
   const origin = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
   const data: QrCardData[] = students.map((student) => {
