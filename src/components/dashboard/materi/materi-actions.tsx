@@ -14,12 +14,18 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Loader2, RefreshCw, Send } from "lucide-react";
+import {
+  analyzeMaterialAgainAction,
+  publishMaterialAction,
+} from "@/actions/materials";
 
 export function MateriActions({
+  materialId,
   status,
   approvedCount,
   totalStudents,
 }: {
+  materialId: string;
   status: string;
   approvedCount: number;
   totalStudents: number;
@@ -33,15 +39,24 @@ export function MateriActions({
 
   async function run(kind: "proses" | "terbitkan") {
     setBusy(kind);
-    await new Promise((resolve) => setTimeout(resolve, 1200));
+    const result =
+      kind === "proses"
+        ? await analyzeMaterialAgainAction(materialId)
+        : await publishMaterialAction(materialId);
     setBusy(null);
+
+    if (!result.ok) {
+      toast.error("Aksi gagal", { description: result.message });
+      return;
+    }
+
     if (kind === "proses") {
-      toast.success("Analisis AI dijalankan ulang", {
+      toast.success(result.message, {
         description:
-          "Status materi menjadi Diproses AI. Struktur bab akan siap di review dalam beberapa saat.",
+          "Struktur bab dianalisis ulang dari teks materi yang tersimpan di server.",
       });
     } else {
-      toast.success("Materi diterbitkan", {
+      toast.success(result.message, {
         description: `${approvedCount} versi adaptasi yang disetujui kini tampil di layar siswa.`,
       });
       setConfirmPublish(false);
@@ -61,7 +76,7 @@ export function MateriActions({
         ) : (
           <RefreshCw />
         )}
-        {status === "pending_ai" ? "Sedang diproses" : "Proses ulang AI"}
+        {status === "pending_ai" ? "Sedang diproses" : "Proses ulang analisis"}
       </Button>
 
       {isPublished ? (

@@ -3,6 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { createStudentAction } from "@/actions/students";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
@@ -35,7 +36,7 @@ import {
 } from "@/lib/constants";
 import { disabilityTypeSchema, skillLevelSchema } from "@/lib/validation";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, ArrowRight, Save } from "lucide-react";
+import { ArrowLeft, ArrowRight, Loader2, Save } from "lucide-react";
 import type { ClassRoom } from "@/lib/dummy/types";
 
 const formSchema = z.object({
@@ -112,6 +113,7 @@ const INTERACTION_VALUES = ["touch", "speech", "keyboard", "switch", "drag"] as 
 
 export function SiswaForm({ classes }: { classes: ClassRoom[] }) {
   const router = useRouter();
+  const [pending, setPending] = React.useState(false);
   const [step, setStep] = React.useState(0);
 
   const form = useForm<FormValues>({
@@ -148,17 +150,27 @@ export function SiswaForm({ classes }: { classes: ClassRoom[] }) {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  function onSubmit(values: FormValues) {
+  async function onSubmit(values: FormValues) {
+    setPending(true);
+    const result = await createStudentAction(values);
+    setPending(false);
+
+    if (!result.ok) {
+      toast.error("Siswa belum tersimpan", { description: result.message });
+      return;
+    }
+
     const kelas = classes
       .filter((c) => values.classIds.includes(c.id))
       .map((c) => c.name);
-    toast.success(`${values.fullName} berhasil ditambahkan`, {
+    toast.success(result.message, {
       description:
         kelas.length > 0
-          ? `Bergabung ke ${kelas.join(", ")}. Profil awal siap sebagai bahan adaptasi AI.`
-          : "Profil awal siap sebagai bahan adaptasi AI. Tambahkan siswa ke kelas agar bisa mendapat akses QR.",
+          ? `Bergabung ke ${kelas.join(", ")}. Profil awal siap sebagai bahan adaptasi.`
+          : "Profil awal siap sebagai bahan adaptasi. Tambahkan siswa ke kelas agar bisa mendapat akses QR.",
     });
     router.push("/dashboard/siswa");
+    router.refresh();
   }
 
   return (
@@ -649,8 +661,8 @@ export function SiswaForm({ classes }: { classes: ClassRoom[] }) {
             <ArrowRight />
           </Button>
         ) : (
-          <Button type="submit">
-            <Save />
+<Button type="submit" disabled={pending}>
+            {pending ? <Loader2 className="animate-spin" aria-hidden /> : <Save />}
             Simpan siswa
           </Button>
         )}

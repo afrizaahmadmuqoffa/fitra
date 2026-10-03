@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import { createClassAction } from "@/actions/classes";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
@@ -20,7 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Field } from "@/components/dashboard/field";
 import { classSchema, type ClassInput } from "@/lib/validation";
-import { Plus } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
 
 const GRADE_OPTIONS = [
   "Kelas I",
@@ -34,6 +35,7 @@ const GRADE_OPTIONS = [
 export function KelasToolbar({ grade }: { grade: string }) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
+  const [pending, setPending] = React.useState(false);
   const form = useForm<ClassInput>({
     resolver: zodResolver(classSchema),
     mode: "onTouched",
@@ -47,14 +49,24 @@ export function KelasToolbar({ grade }: { grade: string }) {
   });
   const selectedGrade = useWatch({ control: form.control, name: "grade" });
 
-  function onSubmit(values: ClassInput) {
-    toast.success(`Kelas ${values.name} dibuat`, {
+  async function onSubmit(values: ClassInput) {
+    setPending(true);
+    const result = await createClassAction(values);
+    setPending(false);
+
+    if (!result.ok) {
+      toast.error("Kelas belum tersimpan", { description: result.message });
+      return;
+    }
+
+    toast.success(result.message, {
       description:
-        "Siswa dan materi bisa ditambahkan dari halaman kelas ini. QR pribadi dibuat otomatis untuk setiap siswa.",
+        "Siswa dan materi bisa ditambahkan dari halaman kelas ini. QR pribadi dibuat dari halaman kartu QR kelas.",
     });
     setOpen(false);
     form.reset();
     router.push("/dashboard/kelas");
+    router.refresh();
   }
 
   return (
@@ -167,7 +179,10 @@ export function KelasToolbar({ grade }: { grade: string }) {
                 Batal
               </Button>
             </DialogClose>
-            <Button type="submit">Buat kelas</Button>
+            <Button type="submit" disabled={pending}>
+              {pending ? <Loader2 className="animate-spin" aria-hidden /> : null}
+              Buat kelas
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

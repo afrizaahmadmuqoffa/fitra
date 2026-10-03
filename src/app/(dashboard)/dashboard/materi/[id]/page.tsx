@@ -8,7 +8,7 @@ import {
   getMaterialAdaptations,
   getStudentProfile,
   getVisualAssets,
-} from "@/lib/dummy/queries";
+} from "@/db/queries";
 import { ADAPTATION_STATUS, MATERIAL_STATUS } from "@/lib/constants";
 import { PageHeader } from "@/components/dashboard/page-header";
 import {
@@ -105,11 +105,12 @@ export default async function MaterialDetailPage({
           classInfo ? classInfo.name : "tanpa kelas target"
         }`}
         actions={
-          <MateriActions
-            status={material.status}
-            approvedCount={approvedCount}
-            totalStudents={targetStudents.length}
-          />
+<MateriActions
+              materialId={material.id}
+              status={material.status}
+              approvedCount={approvedCount}
+              totalStudents={targetStudents.length}
+            />
         }
       />
 

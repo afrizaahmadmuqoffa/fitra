@@ -9,7 +9,7 @@ import {
   getStudent,
   getStudentClasses,
   getStudentProfile,
-} from "@/lib/dummy/queries";
+} from "@/db/queries";
 import { DISABILITY_LABELS, INTERACTION_LABELS, LEVEL_LABELS } from "@/lib/constants";
 import {
   DisabilityBadge,

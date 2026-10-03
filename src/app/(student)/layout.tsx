@@ -1,13 +1,9 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { StudentBackButton } from "@/components/student/student-back-button";
-import { StudentAdaptiveProvider } from "@/components/student/adaptive-provider";
 import { APP_NAME } from "@/lib/constants";
-import { getSimulatedProfiles } from "@/lib/dummy/queries";
 
-export default async function StudentLayout({ children }: { children: ReactNode }) {
-  const profiles = await getSimulatedProfiles();
-
+export default function StudentLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-[100dvh] flex-col bg-background">
       <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur-md">
@@ -22,7 +18,7 @@ export default async function StudentLayout({ children }: { children: ReactNode 
         </div>
       </header>
       <main id="konten-utama" className="flex-1 pb-24 md:pb-10">
-        <StudentAdaptiveProvider profiles={profiles}>{children}</StudentAdaptiveProvider>
+        {children}
       </main>
     </div>
   );

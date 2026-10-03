@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import { saveStudentProfileAction } from "@/actions/students";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -30,7 +31,7 @@ import {
   NAV_STYLE_LABELS,
 } from "@/lib/constants";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, ArrowRight, Save } from "lucide-react";
+import { ArrowLeft, ArrowRight, Loader2, Save } from "lucide-react";
 import type { SkillLevel, StudentProfile } from "@/lib/dummy/types";
 
 const LEVELS: SkillLevel[] = ["low", "medium", "high"];
@@ -189,14 +190,13 @@ function SkillSlider({
 
 export function ProfilForm({
   studentId,
-  studentName,
   profile,
 }: {
   studentId: string;
-  studentName: string;
   profile: StudentProfile | null;
 }) {
   const router = useRouter();
+  const [pending, setPending] = React.useState(false);
   const [step, setStep] = React.useState(0);
   const form = useForm<FormValues>({ mode: "onTouched", defaultValues: defaultsFromProfile(profile) });
   const values = useWatch({ control: form.control }) as FormValues;
@@ -228,17 +228,27 @@ export function ProfilForm({
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  function onSubmit(data: FormValues) {
+  async function onSubmit(data: FormValues) {
     if (data.preferences.length === 0 || data.interactions.length === 0) {
       toast.error("Pilih minimal satu preferensi belajar dan satu bentuk interaksi");
       setStep(3);
       return;
     }
-    toast.success(`Profil belajar ${studentName} tersimpan`, {
+    setPending(true);
+    const result = await saveStudentProfileAction({ studentId, values: data });
+    setPending(false);
+
+    if (!result.ok) {
+      toast.error("Profil belum tersimpan", { description: result.message });
+      return;
+    }
+
+    toast.success(result.message, {
       description:
         "Materi yang pernah terbit ditandai perlu ditinjau ulang agar tetap sesuai profil terbaru.",
     });
     router.push(`/dashboard/siswa/${studentId}`);
+    router.refresh();
   }
 
   return (
@@ -635,8 +645,8 @@ export function ProfilForm({
             <ArrowRight />
           </Button>
         ) : (
-          <Button type="submit">
-            <Save />
+<Button type="submit" disabled={pending}>
+            {pending ? <Loader2 className="animate-spin" aria-hidden /> : <Save />}
             Simpan profil
           </Button>
         )}

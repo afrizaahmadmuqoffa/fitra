@@ -5,7 +5,7 @@ import {
   getPpiDocument,
   getStudent,
   getTeacher,
-} from "@/lib/dummy/queries";
+} from "@/db/queries";
 import { DISABILITY_LABELS } from "@/lib/constants";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { DisabilityBadge, formatTanggal } from "@/components/dashboard/feedback";

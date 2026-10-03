@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getClasses, getClassStudents } from "@/lib/dummy/queries";
+import { getClasses, getClassStudents } from "@/db/queries";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Button } from "@/components/ui/button";
 import { MateriUploadForm } from "@/components/dashboard/materi/materi-upload-form";

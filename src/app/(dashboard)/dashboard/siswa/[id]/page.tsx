@@ -12,7 +12,7 @@ import {
   getStudentPpi,
   getStudentProfile,
   getTokensByStudent,
-} from "@/lib/dummy/queries";
+} from "@/db/queries";
 import { ADAPTATION_STATUS, DISABILITY_LABELS, LEVEL_LABELS } from "@/lib/constants";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -369,7 +369,7 @@ export default async function StudentDetailPage({
                           "Kelas dihapus"}
                       </p>
                       <p className="mt-0.5 font-mono text-xs text-muted-foreground">
-                        {token.token}
+                        Teks token tersimpan sebagai hash di server
                       </p>
                       <p className="mt-0.5 text-xs text-muted-foreground">
                         Berlaku sampai {formatTanggal(token.expiresAt)}

@@ -3,26 +3,48 @@
 import * as React from "react";
 import QRCode from "qrcode";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Download, Link2, Printer, QrCode as QrIcon } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { generateTokenAction, toggleTokenAction } from "@/actions/tokens";
+import {
+  Download,
+  KeyRound,
+  Link2,
+  Printer,
+  QrCode as QrIcon,
+  RefreshCw,
+  ShieldCheck,
+} from "lucide-react";
 
 export type QrCardData = {
-  token: string;
+  tokenId: string | null;
   studentId: string;
   studentName: string;
   studentNickname: string;
   isActive: boolean;
   expiresAt: string;
   lastUsedAt: string | null;
+  classId: string;
   className: string;
   origin: string;
+  /** Teks token hanya ada bila baru dibuat atau dirotasi pada sesi guru ini. */
+  plaintext: string | null;
 };
 
 function formatDate(iso: string) {
+  if (!iso) return "tidak ditentukan";
   return new Intl.DateTimeFormat("id-ID", {
     day: "numeric",
     month: "long",
@@ -30,10 +52,14 @@ function formatDate(iso: string) {
   }).format(new Date(iso));
 }
 
-function useQrDataUrl(token: string) {
-  const [src, setSrc] = React.useState<string | null>(null);
+function useQrDataUrl(token: string | null) {
+  const [result, setResult] = React.useState<{
+    token: string | null;
+    src: string | null;
+  }>({ token, src: null });
 
   React.useEffect(() => {
+    if (!token) return;
     let active = true;
     QRCode.toDataURL(token, {
       width: 640,
@@ -42,26 +68,90 @@ function useQrDataUrl(token: string) {
       color: { dark: "#14332f", light: "#ffffff" },
     })
       .then((url) => {
-        if (active) setSrc(url);
+        if (active) setResult({ token, src: url });
       })
       .catch(() => {
-        if (active) setSrc(null);
+        if (active) setResult({ token, src: null });
       });
-    return () => {
+return () => {
       active = false;
     };
   }, [token]);
 
-  return src;
+  // Hasil milik token lain tidak pernah ditampilkan, sehingga kartu yang
+  // tokennya baru dibuat/dirotasi langsung menampilkan QR-nya sendiri.
+  return result.token === token ? result.src : null;
 }
 
-function QrCard({ data }: { data: QrCardData }) {
-  const src = useQrDataUrl(data.token);
-  const accessUrl = `${data.origin}/belajar/${data.token}`;
+type RevealState = {
+  studentId: string;
+  classId: string;
+  studentName: string;
+  token: string;
+};
+
+function QrCard({
+  data,
+  onReveal,
+}: {
+  data: QrCardData;
+  onReveal: (reveal: RevealState) => void;
+}) {
+  const router = useRouter();
+  const [pending, setPending] = React.useState(false);
   const [active, setActive] = React.useState(data.isActive);
+  const src = useQrDataUrl(data.plaintext);
+  const accessUrl = data.plaintext ? `${data.origin}/belajar/${data.plaintext}` : null;
   const lastUsed = data.lastUsedAt ? formatDate(data.lastUsedAt) : null;
 
-  async function download() {
+  async function createToken() {
+    setPending(true);
+    const result = await generateTokenAction({
+      classId: data.classId,
+      studentId: data.studentId,
+    });
+    setPending(false);
+
+    if (!result.ok || !result.token) {
+      toast.error("Token gagal dibuat", { description: result.message });
+      return;
+    }
+    onReveal({
+      studentId: data.studentId,
+      classId: data.classId,
+      studentName: data.studentName,
+      token: result.token,
+    });
+    router.refresh();
+  }
+
+  async function toggleAccess() {
+    const next = !active;
+    setActive(next);
+    const result = await toggleTokenAction({
+      tokenId: data.tokenId ?? "",
+      isActive: next,
+    });
+    if (!result.ok) {
+      setActive(!next);
+      toast.error("Token gagal diubah", { description: result.message });
+      return;
+    }
+    toast.success(result.message);
+    router.refresh();
+  }
+
+  async function copyLink() {
+    if (!accessUrl) return;
+    try {
+      await navigator.clipboard.writeText(accessUrl);
+      toast.success("Tautan akses disalin", { description: accessUrl });
+    } catch {
+      toast.error("Peramban tidak mengizinkan penyalinan otomatis");
+    }
+  }
+
+  function download() {
     if (!src) {
       toast.error("Kode QR belum selesai dibuat");
       return;
@@ -71,17 +161,6 @@ function QrCard({ data }: { data: QrCardData }) {
     link.download = `fitra-qr-${data.studentId}.png`;
     link.click();
     toast.success(`QR ${data.studentName} diunduh`);
-  }
-
-  async function copyLink() {
-    try {
-      await navigator.clipboard.writeText(accessUrl);
-      toast.success("Tautan akses disalin", {
-        description: accessUrl,
-      });
-    } catch {
-      toast.error("Peramban tidak mengizinkan penyalinan otomatis");
-    }
   }
 
   return (
@@ -98,8 +177,10 @@ function QrCard({ data }: { data: QrCardData }) {
               height={160}
             />
           ) : (
-            <div className="grid size-40 place-items-center rounded-md bg-muted text-xs text-muted-foreground">
-              Menyusun kode QR
+            <div className="grid size-40 place-items-center rounded-md bg-muted px-2 text-center text-xs text-muted-foreground">
+              {data.tokenId
+                ? "Token tersimpan sebagai hash. Buat ulang untuk melihat kode QR."
+                : "Belum ada token untuk siswa ini."}
             </div>
           )}
         </div>
@@ -111,9 +192,15 @@ function QrCard({ data }: { data: QrCardData }) {
           </p>
         </div>
 
-        <Badge variant="outline" className="font-mono text-[0.65rem]">
-          {data.token}
-        </Badge>
+        {data.plaintext ? (
+          <Badge variant="outline" className="font-mono text-[0.65rem]">
+            {data.plaintext}
+          </Badge>
+        ) : (
+          <Badge variant="secondary" className="text-[0.65rem]">
+            Teks token tersimpan sebagai hash
+          </Badge>
+        )}
 
         <p className="text-[0.7rem] leading-relaxed text-muted-foreground">
           Berlaku sampai {formatDate(data.expiresAt)}
@@ -122,32 +209,47 @@ function QrCard({ data }: { data: QrCardData }) {
         </p>
 
         <div className="no-print flex w-full flex-wrap items-center justify-between gap-2 border-t pt-3">
-          <div className="flex items-center gap-2">
-            <Switch
-              id={`token-${data.token}`}
-              size="sm"
-              checked={active}
-              onCheckedChange={(value) => {
-                setActive(value);
-                toast.success(
-                  value
-                    ? `Akses ${data.studentName} diaktifkan`
-                    : `Akses ${data.studentName} dinonaktifkan`,
-                );
-              }}
-              aria-label={`Aktifkan akses ${data.studentName}`}
-            />
-            <Label htmlFor={`token-${data.token}`} className="text-xs">
-              {active ? "Aktif" : "Nonaktif"}
-            </Label>
-          </div>
+          {data.tokenId ? (
+            <div className="flex items-center gap-2">
+              <Switch
+                id={`token-${data.studentId}`}
+                size="sm"
+                checked={active}
+                onCheckedChange={toggleAccess}
+                aria-label={`Aktifkan akses ${data.studentName}`}
+              />
+              <Label htmlFor={`token-${data.studentId}`} className="text-xs">
+                {active ? "Aktif" : "Nonaktif"}
+              </Label>
+            </div>
+          ) : (
+            <span className="text-xs text-muted-foreground">Belum ada token</span>
+          )}
+
           <div className="flex gap-1">
-            <Button variant="ghost" size="icon-sm" onClick={copyLink} aria-label="Salin tautan akses">
-              <Link2 />
-            </Button>
-            <Button variant="outline" size="sm" onClick={download}>
+            {data.tokenId && (
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={copyLink}
+                disabled={!accessUrl}
+                aria-label={`Salin tautan akses ${data.studentName}`}
+              >
+                <Link2 />
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={download}
+              disabled={!src}
+            >
               <Download />
               PNG
+            </Button>
+            <Button size="sm" onClick={createToken} disabled={pending}>
+              {data.tokenId ? <RefreshCw /> : <KeyRound />}
+              {data.tokenId ? "Rotasi" : "Buat QR"}
             </Button>
           </div>
         </div>
@@ -157,35 +259,130 @@ function QrCard({ data }: { data: QrCardData }) {
 }
 
 export function QrBoard({ data }: { data: QrCardData[] }) {
-  const activeCount = data.filter((item) => item.isActive).length;
+  const [revealed, setRevealed] = React.useState<
+    Record<string, { classId: string; token: string }>
+  >(() =>
+    Object.fromEntries(
+      data
+        .filter((item) => item.plaintext)
+        .map((item) => [
+          item.studentId,
+          { classId: item.classId, token: item.plaintext as string },
+        ]),
+    ),
+  );
+  const [dialog, setDialog] = React.useState<RevealState | null>(null);
+  const dialogSrc = useQrDataUrl(dialog?.token ?? null);
+
+  const merged = data.map((item) => {
+    const local = revealed[item.studentId];
+    return {
+      ...item,
+      plaintext: local?.token ?? item.plaintext,
+    };
+  });
+
+  const activeCount = merged.filter((item) => item.isActive).length;
+  const printable = merged.filter((item) => item.plaintext);
+
+  function onReveal(reveal: RevealState) {
+    setRevealed((prev) => ({
+      ...prev,
+      [reveal.studentId]: {
+        classId: reveal.classId,
+        token: reveal.token,
+      },
+    }));
+    setDialog(reveal);
+  }
+
+  function copyDialogLink() {
+    if (!dialog) return;
+    void navigator.clipboard
+      .writeText(`${window.location.origin}/belajar/${dialog.token}`)
+      .then(() => toast.success("Tautan akses disalin"))
+      .catch(() => toast.error("Peramban tidak mengizinkan penyalinan otomatis"));
+  }
 
   return (
     <div className="space-y-4">
       <div className="no-print flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-muted/40 px-4 py-3">
         <p className="text-sm text-muted-foreground">
-{activeCount} dari {data.length} token aktif. Cetak seluruh kartu QR dan
-        tempel di meja siswa atau di lanyard bawaan kelas.
+          {activeCount} dari {merged.length} token aktif. Cetak kartu QR yang tampil lalu
+          tempel di meja siswa atau di lanyard bawaan kelas.
         </p>
-        <Button onClick={() => window.print()}>
+        <Button
+          onClick={() => window.print()}
+          disabled={printable.length === 0}
+        >
           <Printer />
-          Cetak semua
+          Cetak yang tampil
         </Button>
       </div>
 
       <ul className="grid gap-3 print:grid-cols-2 print:gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {data.map((item) => (
-          <li key={item.token}>
-            <QrCard data={item} />
+        {merged.map((item) => (
+          <li key={item.studentId}>
+            <QrCard data={item} onReveal={onReveal} />
           </li>
         ))}
       </ul>
 
       <p className="no-print flex items-start gap-2 rounded-lg bg-info/8 p-4 text-xs leading-relaxed text-muted-foreground">
         <QrIcon className="mt-0.5 size-4 shrink-0 text-info" aria-hidden="true" />
-        Token adalah kunci acak 32 karakter, bukan data pribadi siswa. Jika kartu QR
-        hilang, nonaktifkan token tersebut lalu buat ulang agar tidak bisa diakses
-        orang lain.
+        Token adalah kunci acak 32 karakter yang hanya disimpan sebagai hash SHA-256 di
+        server. Teks token muncul kembali setiap kali Anda membuat atau merotasi token,
+        jadi cetak atau simpan tautannya sebelum meninggalkan halaman ini.
       </p>
+
+      <Dialog open={Boolean(dialog)} onOpenChange={(open) => !open && setDialog(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Token QR {dialog?.studentName}</DialogTitle>
+            <DialogDescription>
+              Cetak kartu ini sekarang. Teks token tidak bisa ditampilkan lagi setelah
+              Anda menutup dialog karena server hanya menyimpan hash-nya.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col items-center gap-3">
+            <div className="rounded-lg border bg-white p-3">
+              {dialogSrc ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={dialogSrc}
+                  alt={`Kode QR akses belajar ${dialog?.studentName ?? "siswa"}`}
+                  className="size-48"
+                  width={192}
+                  height={192}
+                />
+              ) : (
+                <div className="grid size-48 place-items-center rounded-md bg-muted text-xs text-muted-foreground">
+                  Menyusun kode QR
+                </div>
+              )}
+            </div>
+            <Badge variant="outline" className="font-mono text-[0.65rem]">
+              {dialog?.token}
+            </Badge>
+            <p className="text-center text-xs text-muted-foreground">
+              <ShieldCheck className="mr-1 inline size-3.5" aria-hidden="true" />
+              Tautan siswa: /belajar/{dialog?.token}
+            </p>
+          </div>
+
+          <DialogFooter className="sm:justify-center">
+            <Button variant="outline" onClick={copyDialogLink}>
+              <Link2 />
+              Salin tautan
+            </Button>
+            <Button onClick={() => window.print()}>
+              <Printer />
+              Cetak kartu
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

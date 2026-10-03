@@ -3,7 +3,7 @@ import Link from "next/link";
 import {
   getPpiDocuments,
   getStudent,
-} from "@/lib/dummy/queries";
+} from "@/db/queries";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { EmptyState, ToneBadge, formatTanggal } from "@/components/dashboard/feedback";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";

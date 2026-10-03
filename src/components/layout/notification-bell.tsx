@@ -2,12 +2,18 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Bell, CheckCheck, FileCheck2, GraduationCap, Sparkles, UserCog } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import type { AppNotification, NotificationType } from "@/lib/dummy/types";
+import type { AppNotification, NotificationType } from "@/db/types";
+import {
+  markAllNotificationsReadAction,
+  markNotificationReadAction,
+} from "@/actions/notifications";
 
 const ICONS: Record<NotificationType, typeof Bell> = {
   ai_done: Sparkles,
@@ -40,11 +46,34 @@ export function NotificationBell({
 }: {
   initialNotifications: AppNotification[];
 }) {
+  const router = useRouter();
   const [items, setItems] = React.useState(initialNotifications.slice(0, 30));
   const unread = items.filter((n) => !n.isRead).length;
 
-  const markAllRead = () =>
+  const [busy, setBusy] = React.useState(false);
+
+  const markAllRead = async () => {
+    setBusy(true);
+    // Optimistic: tampilkan dulu, lalu konfirmasi ke server.
     setItems((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    const result = await markAllNotificationsReadAction();
+    setBusy(false);
+    if (!result.ok) {
+      setItems(initialNotifications.slice(0, 30));
+      toast.error("Notifikasi belum ditandai", { description: result.message });
+      return;
+    }
+    toast.success(result.message);
+    router.refresh();
+  };
+
+  const openItem = async (id: string) => {
+    setItems((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)),
+    );
+    await markNotificationReadAction(id);
+    router.refresh();
+  };
 
   return (
     <Popover>
@@ -74,8 +103,8 @@ export function NotificationBell({
           <Button
             variant="ghost"
             size="sm"
-            onClick={markAllRead}
-            disabled={unread === 0}
+onClick={markAllRead}
+            disabled={unread === 0 || busy}
           >
             <CheckCheck className="size-4" aria-hidden />
             Tandai dibaca
@@ -93,8 +122,9 @@ export function NotificationBell({
                 const Icon = ICONS[item.type];
                 return (
                   <li key={item.id}>
-                    <Link
+<Link
                       href={item.link}
+                      onClick={() => openItem(item.id)}
                       className="flex gap-3 px-4 py-3 transition-colors hover:bg-accent"
                     >
                       <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-[10px] bg-accent text-accent-foreground">

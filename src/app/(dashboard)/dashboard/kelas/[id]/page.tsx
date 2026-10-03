@@ -6,7 +6,7 @@ import {
   getClassMaterials,
   getClassStudents,
   getTokens,
-} from "@/lib/dummy/queries";
+} from "@/db/queries";
 import { MATERIAL_STATUS } from "@/lib/constants";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { ToneBadge, formatTanggal } from "@/components/dashboard/feedback";

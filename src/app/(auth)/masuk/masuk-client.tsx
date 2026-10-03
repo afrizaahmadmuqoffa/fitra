@@ -12,7 +12,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { loginSchema, registerSchema, type LoginInput, type RegisterInput } from "@/lib/validation";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import {
+  loginSchema,
+  registerSchema,
+  type LoginInput,
+  type RegisterInput,
+} from "@/lib/validation";
+
+const PAGE_ERROR: Record<string, string> = {
+  "kode-kosong": "Permintaan masuk dari Google tidak lengkap. Silakan coba lagi.",
+  "gagal-tukar-kode": "Kode masuk dari Google sudah kedaluwarsa. Silakan coba lagi.",
+};
 
 function GoogleMark() {
   return (
@@ -25,7 +36,10 @@ function GoogleMark() {
         fill="#34A853"
         d="M12 22c2.7 0 5-.9 6.7-2.4l-3.3-2.5c-.9.6-2.1 1-3.4 1-2.6 0-4.8-1.7-5.6-4.1H3v2.6A10 10 0 0 0 12 22Z"
       />
-      <path fill="#FBBC05" d="M6.4 14c-.2-.6-.3-1.3-.3-2s.1-1.4.3-2V7.4H3a10 10 0 0 0 0 9.2L6.4 14Z" />
+      <path
+        fill="#FBBC05"
+        d="M6.4 14c-.2-.6-.3-1.3-.3-2s.1-1.4.3-2V7.4H3a10 10 0 0 0 0 9.2L6.4 14Z"
+      />
       <path
         fill="#EA4335"
         d="M12 5.9c1.5 0 2.8.5 3.8 1.5l2.8-2.8A9.6 9.6 0 0 0 12 2a10 10 0 0 0-9 5.4L6.4 10c.8-2.4 3-4.1 5.6-4.1Z"
@@ -34,9 +48,13 @@ function GoogleMark() {
   );
 }
 
-function LoginForm() {
-  const router = useRouter();
+function LoginForm({ nextPath }: { nextPath: string | null }) {
+
+
+  const supabase = React.useMemo(() => createSupabaseBrowserClient(), []);
+const router = useRouter();
   const [pending, setPending] = React.useState(false);
+  const [formError, setFormError] = React.useState<string | null>(null);
   const form = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: "", password: "" },
@@ -44,16 +62,35 @@ function LoginForm() {
 
   const onSubmit = form.handleSubmit(async (values) => {
     setPending(true);
-    await new Promise((r) => setTimeout(r, 700));
-    setPending(false);
+    setFormError(null);
+
+    const { error } = await supabase.auth.signInWithPassword(values);
+
+    if (error) {
+      setPending(false);
+      const message =
+        error.message === "Invalid login credentials"
+          ? "Email atau kata sandi tidak cocok dengan data kami."
+          : error.message;
+      setFormError(message);
+      toast.error("Gagal masuk", { description: message });
+      return;
+    }
+
     toast.success("Berhasil masuk", {
       description: `Selamat datang kembali, ${values.email}`,
     });
-    router.push("/dashboard");
+    router.replace(nextPath ?? "/dashboard");
+    router.refresh();
   });
 
   return (
     <form onSubmit={onSubmit} className="space-y-4" noValidate>
+      {formError && (
+        <Alert variant="destructive">
+          <AlertDescription className="text-sm">{formError}</AlertDescription>
+        </Alert>
+      )}
       <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
         <Input
@@ -87,7 +124,11 @@ function LoginForm() {
         )}
       </div>
       <Button type="submit" className="h-11 w-full" disabled={pending}>
-        {pending ? <Loader2 className="animate-spin" aria-hidden /> : <LogIn aria-hidden />}
+        {pending ? (
+          <Loader2 className="animate-spin" aria-hidden />
+        ) : (
+          <LogIn aria-hidden />
+        )}
         Masuk
       </Button>
     </form>
@@ -96,7 +137,9 @@ function LoginForm() {
 
 function RegisterForm() {
   const router = useRouter();
+  const supabase = React.useMemo(() => createSupabaseBrowserClient(), []);
   const [pending, setPending] = React.useState(false);
+  const [formError, setFormError] = React.useState<string | null>(null);
   const form = useForm<RegisterInput>({
     resolver: zodResolver(registerSchema),
     defaultValues: { fullName: "", email: "", password: "", schoolName: "" },
@@ -104,16 +147,55 @@ function RegisterForm() {
 
   const onSubmit = form.handleSubmit(async (values) => {
     setPending(true);
-    await new Promise((r) => setTimeout(r, 700));
-    setPending(false);
+    setFormError(null);
+
+    const { data, error } = await supabase.auth.signUp({
+      email: values.email,
+      password: values.password,
+      options: {
+        data: {
+          full_name: values.fullName,
+          school_name: values.schoolName,
+        },
+      },
+    });
+
+    if (error) {
+      setPending(false);
+      const message =
+        error.message === "User already registered"
+          ? "Email ini sudah terdaftar. Silakan masuk dengan kata sandi Anda."
+          : error.message;
+      setFormError(message);
+      toast.error("Gagal membuat akun", { description: message });
+      return;
+    }
+
+    if (!data.session) {
+      setPending(false);
+      setFormError(
+        "Akun berhasil dibuat, tetapi sesi belum aktif. Silakan masuk dengan email dan kata sandi Anda.",
+      );
+      toast.success("Akun berhasil dibuat", {
+        description: "Silakan masuk untuk membuka dasbor.",
+      });
+      return;
+    }
+
     toast.success("Akun berhasil dibuat", {
       description: `Selamat datang, ${values.fullName}.`,
     });
-    router.push("/dashboard");
+    router.replace("/dashboard");
+    router.refresh();
   });
 
   return (
     <form onSubmit={onSubmit} className="space-y-4" noValidate>
+      {formError && (
+        <Alert variant="destructive">
+          <AlertDescription className="text-sm">{formError}</AlertDescription>
+        </Alert>
+      )}
       <div className="space-y-2">
         <Label htmlFor="fullName">Nama lengkap dan gelar</Label>
         <Input
@@ -177,7 +259,11 @@ function RegisterForm() {
         )}
       </div>
       <Button type="submit" className="h-11 w-full" disabled={pending}>
-        {pending ? <Loader2 className="animate-spin" aria-hidden /> : <Mail aria-hidden />}
+        {pending ? (
+          <Loader2 className="animate-spin" aria-hidden />
+        ) : (
+          <Mail aria-hidden />
+        )}
         Buat akun
       </Button>
       <p className="text-xs leading-relaxed text-muted-foreground">
@@ -188,8 +274,39 @@ function RegisterForm() {
   );
 }
 
-export function MasukClient() {
-  const router = useRouter();
+export function MasukClient({
+  nextPath,
+  errorCode,
+}: {
+  nextPath: string | null;
+  errorCode: string | null;
+}) {
+
+
+  const supabase = React.useMemo(() => createSupabaseBrowserClient(), []);
+  const [googlePending, setGooglePending] = React.useState(false);
+  const [googleError, setGoogleError] = React.useState<string | null>(null);
+
+  const startGoogle = async () => {
+    setGooglePending(true);
+    setGoogleError(null);
+    const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(
+      nextPath ?? "/dashboard",
+    )}`;
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo },
+    });
+    if (error) {
+      setGooglePending(false);
+      setGoogleError(error.message);
+      toast.error("Gagal menghubungi Google", { description: error.message });
+    }
+  };
+
+  const pageError = errorCode
+    ? (PAGE_ERROR[errorCode] ?? "Proses masuk tidak dapat diselesaikan.")
+    : null;
 
   return (
     <div>
@@ -200,10 +317,15 @@ export function MasukClient() {
         Gunakan akun guru Anda. Siswa tidak perlu akun.
       </p>
 
+      {pageError && (
+        <Alert variant="destructive" className="mt-5">
+          <AlertDescription className="text-sm">{pageError}</AlertDescription>
+        </Alert>
+      )}
+
       <Alert className="mt-5">
         <AlertDescription className="text-sm">
-          Ini pratinjau antarmuka. Formulir divalidasi dan menampilkan hasil,
-          tetapi belum tersimpan ke server. Data contoh:{" "}
+          Akun contoh untuk mencoba:{" "}
           <span className="font-medium">sri.wahyuni@slb1yogya.sch.id</span> dengan
           kata sandi <span className="font-medium">fitra2026</span>.
         </AlertDescription>
@@ -213,11 +335,19 @@ export function MasukClient() {
         <Button
           variant="outline"
           className="h-11 w-full"
-          onClick={() => router.push("/auth/callback")}
+          onClick={startGoogle}
+          disabled={googlePending}
         >
-          <GoogleMark />
+          {googlePending ? (
+            <Loader2 className="size-4 animate-spin" aria-hidden />
+          ) : (
+            <GoogleMark />
+          )}
           Masuk dengan Google
         </Button>
+        {googleError && (
+          <p className="text-sm text-destructive">{googleError}</p>
+        )}
       </div>
 
       <div className="my-6 flex items-center gap-3 text-xs text-muted-foreground">
@@ -236,7 +366,7 @@ export function MasukClient() {
           </TabsTrigger>
         </TabsList>
         <TabsContent value="masuk" className="mt-5">
-          <LoginForm />
+          <LoginForm nextPath={nextPath} />
         </TabsContent>
         <TabsContent value="daftar" className="mt-5">
           <RegisterForm />
@@ -245,7 +375,10 @@ export function MasukClient() {
 
       <p className="mt-6 text-sm text-muted-foreground">
         Belum punya akun?{" "}
-        <Link href="/panduan" className="font-medium text-primary underline-offset-4 hover:underline">
+        <Link
+          href="/panduan"
+          className="font-medium text-primary underline-offset-4 hover:underline"
+        >
           Lihat panduan terlebih dahulu
         </Link>
       </p>

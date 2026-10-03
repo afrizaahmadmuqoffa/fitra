@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import {
   getActiveMaterialsForStudent,
-  getStudent,
   getStudentClasses,
-  getTokenByValue,
-  getTokens,
-  isTokenExpired,
-} from "@/lib/dummy/queries";
+  getStudentContextForStudent,
+  resolveStudentAccess,
+} from "@/db/queries/student";
+import { isTokenExpired } from "@/lib/tokens";
+import { StudentAdaptiveShell } from "@/components/student/student-adaptive-shell";
 import { StudentWelcome } from "@/components/student/student-welcome";
 import { TokenNotice } from "@/components/student/token-notice";
 
@@ -22,25 +22,19 @@ export default async function StudentEntryPage({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
-  const access = await getTokenByValue(token);
+  const access = await resolveStudentAccess(token);
 
   if (!access) {
-    const samples = await getTokens("cls-iv-b");
-    return (
-      <TokenNotice
-        status="tidak-ditemukan"
-        samples={samples.filter((item) => item.isActive).map((item) => item.token)}
-      />
-    );
+    return <TokenNotice status="tidak-ditemukan" />;
   }
 
-  const student = await getStudent(access.studentId);
+  const { student, profile } = await getStudentContextForStudent(access.studentId);
 
   if (!access.isActive) {
     return <TokenNotice status="nonaktif" studentName={student?.fullName} />;
   }
 
-  if (await isTokenExpired(access.expiresAt)) {
+  if (isTokenExpired(access.expiresAt)) {
     return (
       <TokenNotice
         status="kedaluwarsa"
@@ -58,13 +52,15 @@ export default async function StudentEntryPage({
   ]);
 
   return (
-    <StudentWelcome
-      student={student}
-      nickname={student.nickname}
-      classNames={classes.map((item) => item.name)}
-      subjectCount={classes.length}
-      publishedCount={active.length}
-      sessionHref={`/belajar/${token}/sesi`}
-    />
+    <StudentAdaptiveShell student={student} profile={profile} token={token}>
+      <StudentWelcome
+        student={student}
+        nickname={student.nickname}
+        classNames={classes.map((item) => item.name)}
+        subjectCount={classes.length}
+        publishedCount={active.length}
+        sessionHref={`/belajar/${token}/sesi`}
+      />
+    </StudentAdaptiveShell>
   );
 }

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -25,6 +25,7 @@ import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/s
 import { Menu, Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { NotificationBell } from "@/components/layout/notification-bell";
+import { SignOutItem } from "@/components/layout/sign-out-item";
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 import type { AppNotification } from "@/lib/dummy/types";
@@ -73,8 +74,7 @@ export function DashboardHeader({
   notifications: AppNotification[];
 }) {
   const crumbs = useBreadcrumbs();
-  const { resolvedTheme, setTheme } = useTheme();
-  const router = useRouter();
+const { resolvedTheme, setTheme } = useTheme();
   const [open, setOpen] = React.useState(false);
   const initials = teacher.fullName
     .split(" ")
@@ -168,10 +168,8 @@ export function DashboardHeader({
           <DropdownMenuItem asChild>
             <Link href="/panduan">Panduan penggunaan</Link>
           </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem variant="destructive" onSelect={() => router.push("/")}>
-            Keluar
-          </DropdownMenuItem>
+<DropdownMenuSeparator />
+          <SignOutItem />
         </DropdownMenuContent>
       </DropdownMenu>
 

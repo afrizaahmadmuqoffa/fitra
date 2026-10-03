@@ -5,6 +5,12 @@ import { useTheme } from "next-themes";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
+import {
+  changePasswordAction,
+  updateNotificationPreferencesAction,
+  updateTeacherProfileAction,
+} from "@/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -51,6 +57,7 @@ function initialsOf(name: string) {
 }
 
 export function SettingsForm({ teacher }: { teacher: TeacherProfile }) {
+  const router = useRouter();
   const { resolvedTheme, setTheme } = useTheme();
   const [notifications, setNotifications] = React.useState<Record<string, boolean>>({
     ai_done: true,
@@ -73,13 +80,45 @@ export function SettingsForm({ teacher }: { teacher: TeacherProfile }) {
     },
   });
 
-  function onSubmit() {
-    toast.success("Profil guru tersimpan", {
-      description: "Perubahan ini tampil pada kop dokumen PPI dan matermo yang Anda terbitkan.",
+  const [savingProfile, setSavingProfile] = React.useState(false);
+  const [savingPassword, setSavingPassword] = React.useState(false);
+  const [savingPrefs, setSavingPrefs] = React.useState(false);
+
+  async function onSubmit(values: AccountInput) {
+    setSavingProfile(true);
+    const result = await updateTeacherProfileAction(values);
+    setSavingProfile(false);
+
+    if (!result.ok) {
+      toast.error("Profil belum tersimpan", { description: result.message });
+      return;
+    }
+    toast.success(result.message, {
+      description:
+        "Perubahan ini tampil pada kop dokumen PPI dan materi yang Anda terbitkan.",
     });
+    router.refresh();
   }
 
-  function savePassword() {
+  async function savePreferences() {
+    setSavingPrefs(true);
+    const result = await updateNotificationPreferencesAction({
+      notifyAiDone: notifications.ai_done,
+      notifyReview: notifications.review,
+      notifySession: notifications.session,
+      dailyDigest: digest === "harian",
+    });
+    setSavingPrefs(false);
+
+    if (!result.ok) {
+      toast.error("Preferensi belum tersimpan", { description: result.message });
+      return;
+    }
+    toast.success(result.message);
+    router.refresh();
+  }
+
+  async function savePassword() {
     if (password.next.length < 8) {
       toast.error("Kata sandi baru minimal 8 karakter");
       return;
@@ -88,8 +127,20 @@ export function SettingsForm({ teacher }: { teacher: TeacherProfile }) {
       toast.error("Konfirmasi kata sandi tidak sama");
       return;
     }
+
+    setSavingPassword(true);
+    const result = await changePasswordAction({
+      currentPassword: password.current,
+      newPassword: password.next,
+    });
+    setSavingPassword(false);
+
+    if (!result.ok) {
+      toast.error("Kata sandi belum diganti", { description: result.message });
+      return;
+    }
     setPassword({ current: "", next: "", confirm: "" });
-    toast.success("Kata sandi diperbarui", {
+    toast.success(result.message, {
       description: "Gunakan kata sandi yang mudah Anda ingat tetapi sulit ditebak siswa.",
     });
   }
@@ -167,7 +218,9 @@ export function SettingsForm({ teacher }: { teacher: TeacherProfile }) {
                 </Field>
               </div>
 
-              <Button type="submit">Simpan profil</Button>
+              <Button type="submit" disabled={savingProfile}>
+                {savingProfile ? "Menyimpan..." : "Simpan profil"}
+              </Button>
             </form>
           </CardContent>
         </Card>
@@ -191,12 +244,14 @@ export function SettingsForm({ teacher }: { teacher: TeacherProfile }) {
                   <Switch
                     id={`notif-${option.id}`}
                     checked={notifications[option.id] ?? false}
-                    onCheckedChange={(value) =>
+onCheckedChange={(value) => {
                       setNotifications((current) => ({
                         ...current,
                         [option.id]: value,
-                      }))
-                    }
+                      }));
+                      setTimeout(() => void savePreferences(), 0);
+                    }}
+                    disabled={savingPrefs}
                   />
                 </li>
               ))}
@@ -208,12 +263,14 @@ export function SettingsForm({ teacher }: { teacher: TeacherProfile }) {
               <ToggleGroup
                 type="single"
                 value={digest}
-                onValueChange={(value) => {
-                  if (value) setDigest(value);
-                  toast.success("Pengaturan ringkasan disimpan");
+onValueChange={(value) => {
+                  if (!value) return;
+                  setDigest(value);
+                  setTimeout(() => void savePreferences(), 0);
                 }}
                 variant="outline"
                 aria-label="Pilih frekuensi ringkasan notifikasi"
+                disabled={savingPrefs}
               >
                 <ToggleGroupItem value="harian">Harian</ToggleGroupItem>
                 <ToggleGroupItem value="mingguan">Mingguan</ToggleGroupItem>
@@ -268,7 +325,9 @@ export function SettingsForm({ teacher }: { teacher: TeacherProfile }) {
               Kata sandi minimal 8 karakter. Hindari memakai nama sekolah agar mudah
               ditebak.
             </p>
-            <Button onClick={savePassword}>Perbarui kata sandi</Button>
+            <Button onClick={savePassword} disabled={savingPassword}>
+              {savingPassword ? "Memperbarui..." : "Perbarui kata sandi"}
+            </Button>
 
             <Separator />
 

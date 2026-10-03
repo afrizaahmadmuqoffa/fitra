@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getClassesWithMeta } from "@/lib/dummy/queries";
+import { getClassesWithMeta } from "@/db/queries";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { ToneBadge, formatTanggal } from "@/components/dashboard/feedback";
 import { Card, CardContent } from "@/components/ui/card";

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getStudent, getStudentProfile } from "@/lib/dummy/queries";
+import { getStudent, getStudentProfile } from "@/db/queries";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Button } from "@/components/ui/button";
 import { ProfilForm } from "@/components/dashboard/siswa/profil-form";
@@ -37,11 +37,7 @@ export default async function StudentProfilePage({
         description="Profil ini menjadi bahan utama adaptasi materi dan pengaturan tampilan layar siswa. Perbarui bila ada perubahan kemampuan."
       />
 
-      <ProfilForm
-        studentId={student.id}
-        studentName={student.fullName}
-        profile={profile}
-      />
+      <ProfilForm studentId={student.id} profile={profile} />
     </div>
   );
 }

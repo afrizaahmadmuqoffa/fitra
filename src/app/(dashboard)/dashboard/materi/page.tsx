@@ -4,7 +4,7 @@ import {
   getClasses,
   getMaterialAdaptations,
   getMaterials,
-} from "@/lib/dummy/queries";
+} from "@/db/queries";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Button } from "@/components/ui/button";
 import { MateriBrowser, type MateriRow } from "@/components/dashboard/materi/materi-browser";

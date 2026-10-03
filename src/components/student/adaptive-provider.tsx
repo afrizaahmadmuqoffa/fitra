@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { usePathname } from "next/navigation";
+
+
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -42,6 +43,15 @@ export type SimulatedProfile = {
   uiTokens: StudentProfile["uiTokens"];
 };
 
+/** Setelan tampilan paling netral, dipakai bila profil belum tersedia. */
+export const DEFAULT_UI_TOKENS: StudentProfile["uiTokens"] = {
+  fontSize: "medium",
+  contrastMode: "normal",
+  audioEnabled: true,
+  audioSpeed: "normal",
+  navStyle: "step",
+};
+
 const FONT_SCALE: Record<StudentProfile["uiTokens"]["fontSize"], number> = {
   low: 1.15,
   medium: 1,
@@ -50,11 +60,12 @@ const FONT_SCALE: Record<StudentProfile["uiTokens"]["fontSize"], number> = {
 
 const StudentAdaptiveContext = React.createContext<{
   profile: SimulatedProfile;
-  simulationProfile: SimulatedProfile;
+  simulationProfile: SimulatedProfile | null;
   setSimulationProfileId: (id: string) => void;
   simulation: boolean;
   setSimulation: (value: boolean) => void;
-  profiles: SimulatedProfile[];
+  /** Profil yang bisa dipilih di Mode Simulasi. */
+  candidates: SimulatedProfile[];
 } | null>(null);
 
 export function useStudentAdaptive() {
@@ -65,44 +76,46 @@ export function useStudentAdaptive() {
   return context;
 }
 
+export type { StudentProfile };
+
 /**
- * Membungkus seluruh halaman siswa: menerapkan ukuran teks, kontras, dan gaya
- * navigasi dari student_profiles.ui_tokens. Mode simulasi Lets you mencoba
- * tampilan profil siswa lain tanpa memindai QR lain.
+ * Membungkus halaman siswa: menerapkan ukuran teks, kontras, dan gaya navigasi
+ * dari profil belajar siswa pemilik token yang sedang dibuka.
+ *
+ * Mode Simulasi memakai daftar profil yang sudah pernah guru tampilkan lewat
+ * tombol Buat QR atau Rotasi di halaman kartu QR kelas. Karena database hanya
+ * menyimpan hash token, daftar itu tidak bisa diambil ulang dari server.
  */
 export function StudentAdaptiveProvider({
-  profiles,
+  profile,
+  candidates = [],
   children,
 }: {
-  profiles: SimulatedProfile[];
+  profile: SimulatedProfile;
+  candidates?: SimulatedProfile[];
   children: React.ReactNode;
 }) {
-  const pathname = usePathname();
   const [simulationProfileId, setSimulationProfileId] = React.useState(
-    profiles[0]?.id ?? "",
+    candidates[0]?.id ?? "",
   );
   const [simulation, setSimulation] = React.useState(false);
 
-  const tokenSegment = pathname.split("/")[2] ?? "";
-  const actual = profiles.find((item) => item.token === tokenSegment) ?? profiles[0];
   const simulationProfile =
-    profiles.find((item) => item.id === simulationProfileId) ?? profiles[0];
-  const profile = simulation ? simulationProfile : actual;
-  const tokens = profile.uiTokens;
+    candidates.find((item) => item.id === simulationProfileId) ?? candidates[0] ?? null;
+  const effective = simulation && simulationProfile ? simulationProfile : profile;
+  const tokens = effective.uiTokens;
 
   const value = React.useMemo(
     () => ({
-      profile,
+      profile: effective,
       simulationProfile,
       setSimulationProfileId,
       simulation,
       setSimulation,
-      profiles,
+      candidates,
     }),
-    [profile, simulationProfile, simulation, profiles],
+    [effective, simulationProfile, simulation, candidates],
   );
-
-  if (!profile) return <>{children}</>;
 
   return (
     <StudentAdaptiveContext.Provider value={value}>
@@ -116,21 +129,31 @@ export function StudentAdaptiveProvider({
         {children}
       </div>
 
-      <div className="no-print fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 px-3 py-2 backdrop-blur md:hidden">
-        <ProfileSimulator />
-      </div>
-      <div className="no-print pointer-events-none fixed bottom-4 right-4 z-40 hidden md:block">
-        <div className="pointer-events-auto">
-          <ProfileSimulator />
-        </div>
-      </div>
+      {candidates.length > 0 ? (
+        <>
+          <div className="no-print fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 px-3 py-2 backdrop-blur md:hidden">
+            <ProfileSimulator />
+          </div>
+          <div className="no-print pointer-events-none fixed bottom-4 right-4 z-40 hidden md:block">
+            <div className="pointer-events-auto">
+              <ProfileSimulator />
+            </div>
+          </div>
+        </>
+      ) : null}
     </StudentAdaptiveContext.Provider>
   );
 }
 
 function ProfileSimulator() {
-  const { profile, simulationProfile, setSimulationProfileId, simulation, setSimulation, profiles } =
-    useStudentAdaptive();
+  const {
+    profile,
+    simulationProfile,
+    setSimulationProfileId,
+    simulation,
+    setSimulation,
+    candidates,
+  } = useStudentAdaptive();
 
   const interactions = Object.entries(profile.interactionModes)
     .filter(([, enabled]) => enabled)
@@ -161,26 +184,35 @@ function ProfileSimulator() {
               Memakai profil pilihan di bawah, bukan profil siswa sebenarnya.
             </p>
           </div>
-          <Switch id="simulasi-aktif" checked={simulation} onCheckedChange={setSimulation} />
+          <Switch
+            id="simulasi-aktif"
+            checked={simulation}
+            disabled={!simulationProfile}
+            onCheckedChange={setSimulation}
+          />
         </div>
 
         <div className="mt-4 space-y-2">
           <Label htmlFor="simulasi-profil">Profil siswa</Label>
           <Select
-            value={simulationProfile.id}
+            value={simulationProfile?.id ?? profile.id}
             onValueChange={setSimulationProfileId}
           >
             <SelectTrigger id="simulasi-profil">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {profiles.map((item) => (
+              {candidates.map((item) => (
                 <SelectItem key={item.id} value={item.id}>
                   {item.name} - {item.disabilityLabel}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            Daftar ini berisi siswa yang token QR-nya sudah pernah Anda buat atau rotasi
+            di peramban ini, karena server hanya menyimpan hash token.
+          </p>
         </div>
 
         <div className="mt-5 space-y-4 rounded-lg border p-4">

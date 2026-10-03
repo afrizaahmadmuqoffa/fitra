@@ -9,7 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { useStudentAdaptive } from "@/components/student/adaptive-provider";
 import { cn } from "@/lib/utils";
 import { ArrowRight, BookOpen, CircleCheck, Trophy } from "lucide-react";
-import type { ActiveMaterialRow } from "@/lib/dummy/queries";
+import type { ActiveMaterialRow } from "@/db/queries";
 import type { Student } from "@/lib/dummy/types";
 
 const TAP = "min-h-[var(--spacing-student-tap)]";

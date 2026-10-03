@@ -45,7 +45,8 @@ import {
   Sparkles,
   Upload,
 } from "lucide-react";
-import type { ClassRoom, Student } from "@/lib/dummy/types";
+import type { ClassRoom, Student } from "@/db/types";
+import { createMaterialAction } from "@/actions/materials";
 
 const MAX_SIZE = 20 * 1024 * 1024;
 const MAX_TEXT = 20000;
@@ -98,6 +99,8 @@ export function MateriUploadForm({
   const sourceText = useWatch({ control: form.control, name: "sourceText" }) ?? "";
   const subject = useWatch({ control: form.control, name: "subject" }) ?? "";
   const targetStudents = studentsByClass[classId] ?? [];
+  const targetStudentsWatch =
+    useWatch({ control: form.control, name: "targetStudentIds" }) ?? [];
 
   function acceptFile(next: File | undefined) {
     if (!next) return;
@@ -133,15 +136,34 @@ export function MateriUploadForm({
       toast.error("Tempelkan teks materi minimal 20 karakter");
       return;
     }
-    setRunning(true);
-    // Simulasi proses analisis AI yang berjalan pada Tahap 1.
-    await new Promise((resolve) => setTimeout(resolve, 1400));
+setRunning(true);
+    const targetStudentIds = targetStudentsWatch;
+
+    const result = await createMaterialAction({
+      values: {
+        title: values.title,
+        subject: values.subject ?? "",
+        classId: values.classId ?? "",
+        text: values.sourceText ?? "",
+        targetStudentIds,
+      },
+      file: mode === "file" ? file : null,
+    });
     setRunning(false);
-    toast.success(`${values.title} tersimpan dan masuk antrean analisis AI`, {
+
+    if (!result.ok) {
+      toast.error("Materi belum tersimpan", { description: result.message });
+      return;
+    }
+
+    toast.success(result.message, {
       description:
-        "Status materi berubah menjadi Diproses AI, lalu Siap Review saat struktur bab berhasil dibaca.",
+        targetStudentIds.length > 0
+          ? `${targetStudentIds.length} siswa masuk antrean adaptasi. Versi adaptasi akan lahir sebagai draft dan perlu Anda setujui.`
+          : "Struktur materi sudah dianalisis. Pilih kelas atau siswa target bila ingin materi langsung diadaptasi.",
     });
     router.push("/dashboard/materi");
+    router.refresh();
   }
 
   return (

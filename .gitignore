@@ -40,4 +40,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# token QR plaintext hasil seed (jangan pernah di-commit)
+/.seed-tokens.json
+
+# env contoh untuk setup tim
+!.env.example
+
 PRD.md

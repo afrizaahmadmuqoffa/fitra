@@ -4,6 +4,11 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import {
+  approveAdaptationAction,
+  rejectAdaptationAction,
+  saveAdaptationAction,
+} from "@/actions/materials";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -82,6 +87,7 @@ export function AdaptationEditor({
   initialAssets: VisualAsset[];
 }) {
   const router = useRouter();
+  const adaptationId = adaptation.id;
   const [sections, setSections] = React.useState<AdaptedSection[]>(
     adaptation.adaptedContent.sections,
   );
@@ -214,7 +220,14 @@ export function AdaptationEditor({
     });
   }
 
-  function approve() {
+  async function approve() {
+    setBusy("approve");
+    const result = await approveAdaptationAction({ adaptationId });
+    setBusy(null);
+    if (!result.ok) {
+      toast.error("Persetujuan gagal", { description: result.message });
+      return;
+    }
     setStatus("approved");
     setApprovedAt(new Date().toISOString());
     toast.success("Adaptasi disetujui", {
@@ -224,15 +237,41 @@ export function AdaptationEditor({
     router.refresh();
   }
 
-  function reject() {
+  async function reject() {
+    setBusy("reject");
+    const result = await rejectAdaptationAction({
+      adaptationId,
+      note: "Guru menolak versi adaptasi ini.",
+    });
+    setBusy(null);
+    if (!result.ok) {
+      toast.error("Penolakan gagal", { description: result.message });
+      return;
+    }
     setStatus("rejected");
     setApprovedAt(null);
     toast.success("Adaptasi ditolak", {
       description: "Siswa tetap memakai versi adaptasi sebelumnya yang sudah disetujui.",
     });
+    router.refresh();
   }
 
-  function save() {
+  async function save() {
+    setBusy("save");
+    const result = await saveAdaptationAction({
+      adaptationId,
+      adaptedContent: {
+        readingLevel: adaptation.adaptedContent.readingLevel,
+        generatedFor: adaptation.studentId,
+        sections,
+      },
+      note: `Suntingan guru disimpan untuk ${sections.length} bagian.`,
+    });
+    setBusy(null);
+    if (!result.ok) {
+      toast.error("Suntingan gagal", { description: result.message });
+      return;
+    }
     setEdits((current) => [
       ...current,
       {
@@ -242,9 +281,10 @@ export function AdaptationEditor({
       },
     ]);
     setEditing(false);
-    toast.success("Suntingan tersimpan", {
+    toast.success(result.message, {
       description: "Versi sebelumnya tetap ada di riwayat revisi.",
     });
+    router.refresh();
   }
 
   const meta = ADAPTATION_STATUS[status];

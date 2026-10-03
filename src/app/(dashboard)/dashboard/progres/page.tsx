@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getDailyActivity, getProgressSummary } from "@/lib/dummy/queries";
+import { getDailyActivity, getProgressSummary } from "@/db/queries";
 import { PageHeader } from "@/components/dashboard/page-header";
 import {
   ProgresCharts,

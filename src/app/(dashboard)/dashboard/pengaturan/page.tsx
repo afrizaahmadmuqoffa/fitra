@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getTeacher } from "@/lib/dummy/queries";
+import { getTeacher } from "@/db/queries";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { SettingsForm } from "@/components/dashboard/pengaturan/settings-form";
 

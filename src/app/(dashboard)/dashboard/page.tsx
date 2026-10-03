@@ -7,7 +7,7 @@ import {
   getStudents,
   getTeacher,
   getTeacherChecklist,
-} from "@/lib/dummy/queries";
+} from "@/db/queries";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { ToneBadge, formatDurasi, formatWaktu } from "@/components/dashboard/feedback";

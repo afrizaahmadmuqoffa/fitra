@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getProgressSummary, getStudents, getStudentProfile, getTeacher } from "@/lib/dummy/queries";
+import { getProgressSummary, getStudents, getStudentProfile, getTeacher } from "@/db/queries";
 import { DISABILITY_LABELS } from "@/lib/constants";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Button } from "@/components/ui/button";

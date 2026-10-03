@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import {
-  getRecords,
-  getSessions,
-  getStudent,
-  getTokenByValue,
-} from "@/lib/dummy/queries";
+  getRecordsForStudent,
+  getSessionsForStudent,
+  getStudentContextForStudent,
+  resolveStudentAccess,
+} from "@/db/queries/student";
+import { StudentAdaptiveShell } from "@/components/student/student-adaptive-shell";
 import { StudentDone } from "@/components/student/student-done";
 import { TokenNotice } from "@/components/student/token-notice";
 
@@ -24,32 +25,37 @@ export default async function StudentDonePage({
   const { token } = await params;
   const query = await searchParams;
 
-  const access = await getTokenByValue(token);
+  const access = await resolveStudentAccess(token);
   if (!access) return <TokenNotice status="tidak-ditemukan" />;
 
-  const student = await getStudent(access.studentId);
+  const { student, profile } = await getStudentContextForStudent(access.studentId);
   if (!student) return <TokenNotice status="tidak-ditemuka" />;
 
   const [sessions, records] = await Promise.all([
-    getSessions(student.id),
-    getRecords(student.id),
+    getSessionsForStudent(student.id),
+    getRecordsForStudent(student.id),
   ]);
 
-  const totalSeconds = sessions.reduce((a, item) => a + item.durationSeconds, 0);
+  const totalSeconds = sessions.reduce(
+    (total, item) => total + item.durationSeconds,
+    0,
+  );
   const correct = records.filter((item) => item.isCorrect).length;
 
   return (
-    <StudentDone
-      studentName={student.nickname}
-      photoUrl={student.photoUrl}
-      sessionCorrect={Number(query.benar ?? correct)}
-      sessionAnswered={Number(query.dijawab ?? records.length)}
-      sessionTotal={Number(query.total ?? records.length)}
-      allCorrect={correct}
-      allRecords={records.length}
-      minutes={Math.round(totalSeconds / 60)}
-      listHref={`/belajar/${token}/sesi`}
-      homeHref={`/belajar/${token}`}
-    />
+    <StudentAdaptiveShell student={student} profile={profile} token={token}>
+      <StudentDone
+        studentName={student.nickname}
+        photoUrl={student.photoUrl}
+        sessionCorrect={Number(query.benar ?? correct)}
+        sessionAnswered={Number(query.dijawab ?? records.length)}
+        sessionTotal={Number(query.total ?? records.length)}
+        allCorrect={correct}
+        allRecords={records.length}
+        minutes={Math.round(totalSeconds / 60)}
+        listHref={`/belajar/${token}/sesi`}
+        homeHref={`/belajar/${token}`}
+      />
+    </StudentAdaptiveShell>
   );
 }

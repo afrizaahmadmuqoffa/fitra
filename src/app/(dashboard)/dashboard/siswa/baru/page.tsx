@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Button } from "@/components/ui/button";
-import { getClasses } from "@/lib/dummy/queries";
+import { getClasses } from "@/db/queries";
 import { SiswaForm } from "@/components/dashboard/siswa/siswa-form";
 import { ArrowLeft } from "lucide-react";
 

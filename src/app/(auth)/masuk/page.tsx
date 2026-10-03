@@ -7,6 +7,11 @@ export const metadata: Metadata = {
   robots: { index: false, follow: true },
 };
 
-export default function MasukPage() {
-  return <MasukClient />;
+export default async function MasukPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string; error?: string }>;
+}) {
+  const params = await searchParams;
+  return <MasukClient nextPath={params.next ?? null} errorCode={params.error ?? null} />;
 }

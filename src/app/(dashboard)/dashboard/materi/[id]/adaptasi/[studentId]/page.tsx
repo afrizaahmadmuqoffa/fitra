@@ -6,7 +6,7 @@ import {
   getStudent,
   getStudentProfile,
   getVisualAssets,
-} from "@/lib/dummy/queries";
+} from "@/db/queries";
 import { AdaptationEditor } from "@/components/dashboard/materi/adaptation-editor";
 
 export const metadata: Metadata = {

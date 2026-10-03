@@ -1,15 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getClass, getClassStudents, getTokens } from "@/lib/dummy/queries";
+import { getClass, getClassStudents, getTokens } from "@/db/queries";
+import { readRevealedTokens } from "@/lib/token-reveal";
 import { PageHeader } from "@/components/dashboard/page-header";
-import { ToneBadge, formatTanggal } from "@/components/dashboard/feedback";
+import { ToneBadge } from "@/components/dashboard/feedback";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import {
-  QrBoard,
-  type QrCardData,
-} from "@/components/dashboard/kelas/qr-board";
+import { QrBoard, type QrCardData } from "@/components/dashboard/kelas/qr-board";
 import { ArrowLeft } from "lucide-react";
 
 export const metadata: Metadata = {
@@ -26,28 +23,33 @@ export default async function ClassQrPage({
   const item = await getClass(id);
   if (!item) notFound();
 
-  const [tokens, students] = await Promise.all([getTokens(id), getClassStudents(id)]);
-  const studentById = new Map(students.map((student) => [student.id, student]));
+  const [tokens, students, revealed] = await Promise.all([
+    getTokens(id),
+    getClassStudents(id),
+    readRevealedTokens(id),
+  ]);
+  const tokenByStudent = new Map(tokens.map((token) => [token.studentId, token]));
+  const origin = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
-  const data: QrCardData[] = tokens.flatMap((token) => {
-    const student = studentById.get(token.studentId);
-    if (!student) return [];
-    return [
-      {
-        token: token.token,
-        studentId: student.id,
-        studentName: student.fullName,
-        studentNickname: student.nickname,
-        isActive: token.isActive,
-        expiresAt: token.expiresAt,
-        lastUsedAt: token.lastUsedAt,
-        className: item.name,
-        origin: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
-      },
-    ];
+  const data: QrCardData[] = students.map((student) => {
+    const token = tokenByStudent.get(student.id);
+    return {
+      tokenId: token?.id ?? null,
+      studentId: student.id,
+      studentName: student.fullName,
+      studentNickname: student.nickname,
+      isActive: token?.isActive ?? false,
+      expiresAt: token?.expiresAt ?? "",
+      lastUsedAt: token?.lastUsedAt ?? null,
+      classId: item.id,
+      className: item.name,
+      origin,
+      plaintext: revealed[student.id] ?? null,
+    };
   });
 
-  const missing = students.filter((student) => !tokens.some((t) => t.studentId === student.id));
+  const withoutToken = students.filter((student) => !tokenByStudent.has(student.id));
+  const activeCount = data.filter((row) => row.isActive).length;
 
   return (
     <div className="space-y-6">
@@ -63,7 +65,7 @@ export default async function ClassQrPage({
         description="Setiap siswa punya satu kartu QR untuk kelas ini. Cetak, tempel di meja, lalu siswa cukup memindai untuk masuk ke sesi belajar."
         actions={
           <ToneBadge
-            label={`${data.filter((row) => row.isActive).length} dari ${data.length} token aktif`}
+            label={`${activeCount} dari ${data.length} token aktif`}
             tone="info"
           />
         }
@@ -71,24 +73,13 @@ export default async function ClassQrPage({
 
       <QrBoard data={data} />
 
-      {missing.length > 0 ? (
-        <Card className="border-warning/40 bg-warning/8">
-          <CardContent className="flex flex-wrap items-center justify-between gap-3 pt-6">
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              {missing.map((student) => student.fullName).join(", ")} belum punya
-              token QR di kelas ini. Buat token agar siswa bisa langsung belajar.
-            </p>
-            <Button asChild>
-              <Link href={`/dashboard/kelas/${item.id}`}>Kelola siswa kelas</Link>
-            </Button>
-          </CardContent>
-        </Card>
+      {withoutToken.length > 0 ? (
+        <p className="text-sm text-muted-foreground">
+          {withoutToken.map((student) => student.fullName).join(", ")} belum punya token
+          QR di kelas ini. Tekan tombol Buat QR pada kartunya agar siswa bisa langsung
+          belajar.
+        </p>
       ) : null}
-
-      <p className="text-xs text-muted-foreground">
-        Token berlaku sampai {formatTanggal(tokens[0]?.expiresAt ?? "2027-07-15")} sesuai
-        masa aktif tahun ajaran.
-      </p>
     </div>
   );
 }

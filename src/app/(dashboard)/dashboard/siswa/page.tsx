@@ -6,7 +6,7 @@ import {
   getStudentClasses,
   getStudentProfile,
   getStudents,
-} from "@/lib/dummy/queries";
+} from "@/db/queries";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Button } from "@/components/ui/button";
 import { SiswaBrowser, type SiswaRow } from "@/components/dashboard/siswa/siswa-browser";

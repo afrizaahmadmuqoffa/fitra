@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { DashboardHeader } from "@/components/layout/dashboard-header";
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
-import { getNotifications, getTeacher } from "@/lib/dummy/queries";
+import { getNotifications, getTeacher } from "@/db/queries";
 
 export default async function DashboardLayout({
   children,
