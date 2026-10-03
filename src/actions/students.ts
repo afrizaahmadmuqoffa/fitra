@@ -148,11 +148,14 @@ export async function saveStudentFormAction(input: {
         await tx.insert(studentProfiles).values({ studentId, ...profilePayload });
       }
 
+      // PENTING: yang dibandingkan adalah id KELAS, bukan id siswa. Kalau kolom
+      // ini keliru, semua kelas terpilih dianggap baru dan INSERT menabrak
+      // unique index (class_id, student_id).
       const current = await tx
-        .select({ studentId: classStudents.studentId })
+        .select({ classId: classStudents.classId })
         .from(classStudents)
         .where(eq(classStudents.studentId, studentId));
-      const currentIds = new Set(current.map((row) => row.studentId));
+      const currentIds = new Set(current.map((row) => row.classId));
       const nextIds = new Set(values.classIds);
 
       const removed = [...currentIds].filter((id) => !nextIds.has(id));
@@ -171,7 +174,10 @@ export async function saveStudentFormAction(input: {
       if (added.length > 0) {
         await tx
           .insert(classStudents)
-          .values(added.map((classId) => ({ classId, studentId })));
+          .values(added.map((classId) => ({ classId, studentId })))
+          // Simpan berulang tidak boleh gagal: index unique tetap menjaga data,
+          // baris yang sudah ada dilewati diam-diam.
+          .onConflictDoNothing();
       }
     });
 
@@ -242,9 +248,12 @@ export async function setClassStudentsAction(input: {
 
       const added = [...nextIds].filter((id) => !currentIds.has(id));
       if (added.length > 0) {
-        await tx.insert(classStudents).values(
-          added.map((studentId) => ({ classId: input.classId, studentId })),
-        );
+        await tx
+          .insert(classStudents)
+          .values(
+            added.map((studentId) => ({ classId: input.classId, studentId })),
+          )
+          .onConflictDoNothing();
       }
     });
 

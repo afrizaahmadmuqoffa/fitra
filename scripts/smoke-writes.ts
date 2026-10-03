@@ -10,7 +10,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createClient } from "@supabase/supabase-js";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { hashToken } from "../src/lib/tokens";
 
 function loadEnvFile() {
@@ -25,6 +25,7 @@ loadEnvFile();
 
 import { getDb } from "../src/db/client";
 import {
+  classStudents,
   classes,
   materialAdaptations,
   materials,
@@ -96,13 +97,15 @@ async function main() {
   });
   check("insert siswa + profil", Boolean(studentId), studentId);
 
-  // 2. INSERT kelas + anggota (many-to-many).
+  // 2. INSERT kelas + keanggotaan (many-to-many) + token.
   const className = `Kelas Uji ${Date.now().toString(36)}`;
   const classId = await withRlsDb(claims, async (tx) => {
     const [row] = await tx
       .insert(classes)
       .values({ teacherId, name: className, grade: "Kelas IV", room: "R. Uji" })
       .returning({ id: classes.id });
+    // Meniru hasil simpan pertama: siswa menjadi anggota kelas ini.
+    await tx.insert(classStudents).values({ classId: row.id, studentId });
     await tx.insert(studentAccessTokens).values({
       studentId,
       classId: row.id,
@@ -111,7 +114,7 @@ async function main() {
     });
     return row.id;
   });
-  check("insert kelas", Boolean(classId), classId);
+  check("insert kelas + anggota", Boolean(classId), classId);
 
   // 3. Token tidak boleh bisa dibaca sebelum dirotasi (hash one-way).
   const hashNow = hashToken("token-uji-lokal");
@@ -208,7 +211,96 @@ async function main() {
     `${approvedAfter} adaptasi approved`,
   );
 
-  // 7. Bersihkan data uji.
+  // 7. Simpan ulang dengan daftar kelas yang sama persis.
+  //
+  // Ini kasus yang dulu menabrak unique index (class_id, student_id): logika
+  // sinkronisasi salah membandingkan id siswa dengan id kelas, sehingga semua
+  // kelas terpilih dianggap baru dan di-INSERT dua kali. Guru yang menekan
+  // Simpan dua kali pun harus aman.
+  const membershipsBefore = await withRlsDb(claims, async (tx) => {
+    const rows = await tx
+      .select({ classId: classStudents.classId })
+      .from(classStudents)
+      .where(eq(classStudents.studentId, studentId));
+    return rows.map((row) => row.classId);
+  });
+
+  let resaveError: string | null = null;
+  await withRlsDb(claims, async (tx) => {
+    try {
+      const current = await tx
+        .select({ classId: classStudents.classId })
+        .from(classStudents)
+        .where(eq(classStudents.studentId, studentId));
+      const currentIds = new Set(current.map((row) => row.classId));
+      const nextIds = new Set([classId]);
+
+      const removed = [...currentIds].filter((id) => !nextIds.has(id));
+      if (removed.length > 0) {
+        await tx
+          .delete(classStudents)
+          .where(
+            and(
+              eq(classStudents.studentId, studentId),
+              inArray(classStudents.classId, removed),
+            ),
+          );
+      }
+
+      const added = [...nextIds].filter((id) => !currentIds.has(id));
+      if (added.length > 0) {
+        await tx
+          .insert(classStudents)
+          .values(added.map((item) => ({ classId: item, studentId })))
+          .onConflictDoNothing();
+      }
+    } catch (error) {
+      resaveError = error instanceof Error ? error.message : "error tidak dikenal";
+    }
+  });
+
+  const membershipsAfter = await withRlsDb(claims, async (tx) => {
+    const rows = await tx
+      .select({ classId: classStudents.classId })
+      .from(classStudents)
+      .where(eq(classStudents.studentId, studentId));
+    return rows.map((row) => row.classId);
+  });
+
+  check(
+    "simpan ulang kelas tidak menabrak unique index",
+    resaveError === null,
+    resaveError ?? "tidak ada error",
+  );
+  check(
+    "anggota kelas tidak berduplikasi",
+    membershipsAfter.length === membershipsBefore.length &&
+      membershipsAfter.every((item) => membershipsBefore.includes(item)),
+    `${membershipsBefore.length} kelas -> ${membershipsAfter.length} kelas`,
+  );
+
+  // 7b. Mengeluarkan siswa dari kelas harus benar-benar menghapus barisnya.
+  //      Dulu DELETE memakai kolom yang salah sehingga 0 baris terhapus diam-diam.
+  await withRlsDb(claims, async (tx) => {
+    await tx
+      .delete(classStudents)
+      .where(
+        and(
+          eq(classStudents.studentId, studentId),
+          eq(classStudents.classId, classId),
+        ),
+      );
+  });
+  const afterRemoval = await withRlsDb(claims, async (tx) => {
+    const rows = await tx
+      .select({ classId: classStudents.classId })
+      .from(classStudents)
+      .where(eq(classStudents.studentId, studentId));
+    return rows.length;
+  });
+  check("keluarkan dari kelas menghapus baris", afterRemoval === 0, `${afterRemoval} baris tersisa`);
+
+  // 8. Bersihkan data uji.
   await withRlsDb(claims, async (tx) => {
     await tx.delete(materials).where(eq(materials.id, materialId));
     await tx.delete(classes).where(eq(classes.id, classId));
