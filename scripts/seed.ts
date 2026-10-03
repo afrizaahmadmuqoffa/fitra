@@ -402,7 +402,11 @@ async function main() {
       title: dummy.title,
       body: dummy.body,
       type: dummy.type,
-      link: dummy.link,
+      // Link dummy memakai id siswa karangan (stu-…), jadi dialihkan ke
+      // daftar siswa yang benar-benar ada di database.
+      link: dummy.link.startsWith("/dashboard/siswa/")
+        ? "/dashboard/siswa"
+        : dummy.link,
       isRead: dummy.isRead,
       createdAt: dummy.createdAt,
     });

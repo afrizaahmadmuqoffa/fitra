@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAuthContext } from "@/lib/auth";
-import { createStudentAction } from "@/actions/students";
+import { saveStudentFormAction } from "@/actions/students";
 import { getTeacherChecklist } from "@/db/queries";
 
 /**
@@ -21,7 +21,7 @@ export async function GET() {
   }
 
   try {
-    const validation = await createStudentAction({});
+    const validation = await saveStudentFormAction({ values: {} });
     const checklist = await getTeacherChecklist();
 
     return NextResponse.json({

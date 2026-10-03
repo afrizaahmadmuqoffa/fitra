@@ -1,19 +1,20 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { saveStudentProfileAction } from "@/actions/students";
-import { jalankanAction } from "@/lib/action-helpers";
-import { WizardFooter } from "@/components/dashboard/wizard-footer";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
-import { Slider } from "@/components/ui/slider";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Separator } from "@/components/ui/separator";
+import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { Separator } from "@/components/ui/separator";
 import {
   Select,
   SelectContent,
@@ -24,20 +25,44 @@ import {
 import { Field, FieldSet } from "@/components/dashboard/field";
 import { TagInput } from "@/components/dashboard/tag-input";
 import { WizardProgress, type WizardStep } from "@/components/dashboard/wizard";
+import { WizardFooter } from "@/components/dashboard/wizard-footer";
 import {
   AUDIO_SPEED_LABELS,
   CONTRAST_LABELS,
+  DISABILITY_LABELS,
   INTERACTION_LABELS,
   LEVEL_LABELS,
   NAV_STYLE_LABELS,
 } from "@/lib/constants";
 import { cn } from "@/lib/utils";
-import type { SkillLevel, StudentProfile } from "@/lib/dummy/types";
+import { studentFormSchema, type StudentFormValues } from "@/lib/validation";
+import { saveStudentFormAction } from "@/actions/students";
+import { jalankanAction } from "@/lib/action-helpers";
+import type { ClassRoom, Student, StudentProfile } from "@/db/types";
 
-const LEVELS: SkillLevel[] = ["low", "medium", "high"];
-const LEVEL_INDEX: Record<SkillLevel, number> = { low: 0, medium: 1, high: 2 };
+/**
+ * Satu wizard untuk menambah maupun menyunting data siswa.
+ *
+ * Enam langkah: identitas, kelas dan catatan, kemampuan akademik,
+ * sosial-emosional dan motorik, kemandirian, lalu preferensi dan interaksi.
+ * Menambah dan menyunting memakai komponen yang sama supaya tidak ada isian
+ * yang bisa berbeda di dua tempat.
+ *
+ * Langkah 3 sampai 5 memakai slider yang selalu punya nilai, jadi guru boleh
+ * menekan Lanjut tanpa mengisi apa pun dan melengkapinya nanti.
+ */
 
 const STEPS: WizardStep[] = [
+  {
+    id: "identitas",
+    title: "Identitas Siswa",
+    description: "Nama, usia, jenis kelamin, dan jenis hambatan.",
+  },
+  {
+    id: "kelas",
+    title: "Kelas dan Catatan",
+    description: "Masukkan siswa ke kelas dan tulis catatan penting.",
+  },
   {
     id: "akademik",
     title: "Kemampuan Akademik",
@@ -60,36 +85,19 @@ const STEPS: WizardStep[] = [
   },
 ];
 
-type FormValues = {
-  membaca: SkillLevel;
-  menulis: SkillLevel;
-  berhitung: SkillLevel;
-  academicNotes: string;
-  mengenaliOrang: SkillLevel;
-  bekerjaSama: SkillLevel;
-  mengaturEmosi: SkillLevel;
-  socialNotes: string;
-  motorHalus: SkillLevel;
-  motorKasar: SkillLevel;
-  motorNotes: string;
-  dressed: SkillLevel;
-  makan: SkillLevel;
-  menggunakanAlat: SkillLevel;
-  independenceNotes: string;
-  preferences: string[];
-  interactions: string[];
-  fontSize: SkillLevel;
-  contrastMode: "normal" | "high";
-  audioEnabled: boolean;
-  audioSpeed: "slow" | "normal" | "fast";
-  navStyle: "step" | "scroll" | "tap";
-  strengths: string[];
-  barriers: string[];
-};
-
-const STEP_FIELDS: (keyof FormValues)[][] = [
+const STEP_FIELDS: (keyof StudentFormValues)[][] = [
+  ["fullName", "nickname", "age", "gender", "disabilityType"],
+  ["classIds", "notes"],
   ["membaca", "menulis", "berhitung", "academicNotes"],
-  ["mengenaliOrang", "bekerjaSama", "mengaturEmosi", "socialNotes", "motorHalus", "motorKasar", "motorNotes"],
+  [
+    "mengenaliOrang",
+    "bekerjaSama",
+    "mengaturEmosi",
+    "socialNotes",
+    "motorHalus",
+    "motorKasar",
+    "motorNotes",
+  ],
   ["dressed", "makan", "menggunakanAlat", "independenceNotes"],
   [
     "preferences",
@@ -99,53 +107,41 @@ const STEP_FIELDS: (keyof FormValues)[][] = [
     "audioEnabled",
     "audioSpeed",
     "navStyle",
+    "strengths",
+    "barriers",
   ],
 ];
 
-const PREFERENCE_OPTIONS: { value: string; label: string; hint: string }[] = [
-  { value: "visual", label: "Visual", hint: "Gambar besar, warna mencolok, diagram sederhana." },
-  { value: "audio", label: "Audio", hint: "Penjelasan dibacakan dengan tempo lambat." },
-  { value: "kinestetik", label: "Kinestetik", hint: "Latihan melibatkan gerakan dan benda nyata." },
+const LEVELS: StudentProfile["academicLevel"][] = ["low", "medium", "high"];
+const LEVEL_INDEX: Record<StudentProfile["academicLevel"], number> = {
+  low: 0,
+  medium: 1,
+  high: 2,
+};
+
+const INTERACTION_VALUES = ["touch", "speech", "keyboard", "switch", "drag"] as const;
+
+const PREFERENCE_OPTIONS: {
+  value: "visual" | "audio" | "kinestetik";
+  label: string;
+  hint: string;
+}[] = [
+  {
+    value: "visual",
+    label: "Visual",
+    hint: "Lebih mudah dengan gambar, warna, dan diagram.",
+  },
+  {
+    value: "audio",
+    label: "Audio",
+    hint: "Lebih mudah dengan penjelasan yang dibacakan.",
+  },
+  {
+    value: "kinestetik",
+    label: "Kinestetik",
+    hint: "Lebih mudah dengan gerakan dan benda nyata.",
+  },
 ];
-
-const INTERACTION_OPTIONS = ["touch", "speech", "keyboard", "switch", "drag"] as const;
-
-function defaultsFromProfile(profile: StudentProfile | null): FormValues {
-  return {
-    membaca: profile?.academicDetails.membaca ?? "medium",
-    menulis: profile?.academicDetails.menulis ?? "medium",
-    berhitung: profile?.academicDetails.berhitung ?? "medium",
-    academicNotes: "",
-    mengenaliOrang: profile?.socialEmotional.mengenaliOrang ?? "medium",
-    bekerjaSama: profile?.socialEmotional.bekerjaSama ?? "medium",
-    mengaturEmosi: profile?.socialEmotional.mengaturEmosi ?? "medium",
-    socialNotes: profile?.socialEmotional.catatan ?? "",
-    motorHalus: profile?.motorSkills.motorHalus ?? "medium",
-    motorKasar: profile?.motorSkills.motorKasar ?? "medium",
-    motorNotes: profile?.motorSkills.catatan ?? "",
-    dressed: profile?.independence.dressed ?? "medium",
-    makan: profile?.independence.makan ?? "medium",
-    menggunakanAlat: profile?.independence.menggunakanAlat ?? "medium",
-    independenceNotes: profile?.independence.catatan ?? "",
-    preferences: profile
-      ? (Object.entries(profile.learningPreferences)
-          .filter(([, value]) => value)
-          .map(([key]) => key) as string[])
-      : ["visual", "audio"],
-    interactions: profile
-      ? (Object.entries(profile.interactionModes)
-          .filter(([, value]) => value)
-          .map(([key]) => key) as string[])
-      : ["touch"],
-    fontSize: profile?.uiTokens.fontSize ?? "medium",
-    contrastMode: profile?.uiTokens.contrastMode ?? "normal",
-    audioEnabled: profile?.uiTokens.audioEnabled ?? true,
-    audioSpeed: profile?.uiTokens.audioSpeed ?? "normal",
-    navStyle: profile?.uiTokens.navStyle ?? "step",
-    strengths: [],
-    barriers: [],
-  };
-}
 
 function SkillSlider({
   id,
@@ -156,8 +152,8 @@ function SkillSlider({
 }: {
   id: string;
   label: string;
-  value: SkillLevel;
-  onChange: (next: SkillLevel) => void;
+  value: StudentProfile["academicLevel"];
+  onChange: (next: StudentProfile["academicLevel"]) => void;
   hint?: string;
 }) {
   return (
@@ -188,21 +184,87 @@ function SkillSlider({
   );
 }
 
-export function ProfilForm({
-  studentId,
+function defaultsFrom(input: {
+  student?: Student;
+  profile?: StudentProfile | null;
+  initialClassIds: string[];
+}): StudentFormValues {
+  const { student, profile, initialClassIds } = input;
+  const level = profile?.academicLevel ?? "medium";
+  const preferences = profile
+    ? (Object.entries(profile.learningPreferences)
+        .filter(([, value]) => value)
+        .map(([key]) => key) as StudentFormValues["preferences"])
+    : (["visual", "audio"] as const).slice() as StudentFormValues["preferences"];
+  const interactions = profile
+    ? (Object.entries(profile.interactionModes)
+        .filter(([, value]) => value)
+        .map(([key]) => key) as StudentFormValues["interactions"])
+    : (["touch"] as const).slice() as StudentFormValues["interactions"];
+
+  return {
+    fullName: student?.fullName ?? "",
+    nickname: student?.nickname ?? "",
+    age: student?.age ?? 9,
+    gender: student?.gender ?? "L",
+    disabilityType: student?.disabilityType ?? "tunagrahita",
+    classIds: initialClassIds,
+    notes: student?.notes ?? "",
+    membaca: profile?.academicDetails.membaca ?? level,
+    menulis: profile?.academicDetails.menulis ?? level,
+    berhitung: profile?.academicDetails.berhitung ?? level,
+    academicNotes: profile?.academicDetails.catatan ?? "",
+    mengenaliOrang: profile?.socialEmotional.mengenaliOrang ?? level,
+    bekerjaSama: profile?.socialEmotional.bekerjaSama ?? level,
+    mengaturEmosi: profile?.socialEmotional.mengaturEmosi ?? level,
+    socialNotes: profile?.socialEmotional.catatan ?? "",
+    motorHalus: profile?.motorSkills.motorHalus ?? level,
+    motorKasar: profile?.motorSkills.motorKasar ?? level,
+    motorNotes: profile?.motorSkills.catatan ?? "",
+    dressed: profile?.independence.dressed ?? level,
+    makan: profile?.independence.makan ?? level,
+    menggunakanAlat: profile?.independence.menggunakanAlat ?? level,
+    independenceNotes: profile?.independence.catatan ?? "",
+    preferences,
+    interactions,
+    fontSize: profile?.uiTokens.fontSize ?? level,
+    contrastMode: profile?.uiTokens.contrastMode ?? "normal",
+    audioEnabled: profile?.uiTokens.audioEnabled ?? true,
+    audioSpeed: profile?.uiTokens.audioSpeed ?? "normal",
+    navStyle: profile?.uiTokens.navStyle ?? "step",
+    strengths: [],
+    barriers: [],
+  };
+}
+
+export function StudentWizard({
+  mode,
+  classes,
+  student,
   profile,
+  initialClassIds = [],
 }: {
-  studentId: string;
-  profile: StudentProfile | null;
+  mode: "buat" | "ubah";
+  classes: ClassRoom[];
+  student?: Student;
+  profile?: StudentProfile | null;
+  initialClassIds?: string[];
 }) {
   const router = useRouter();
   const [pending, setPending] = React.useState(false);
   const [step, setStep] = React.useState(0);
-  const form = useForm<FormValues>({ mode: "onTouched", defaultValues: defaultsFromProfile(profile) });
-  const values = useWatch({ control: form.control }) as FormValues;
+
+  const form = useForm<StudentFormValues>({
+    resolver: zodResolver(studentFormSchema),
+    mode: "onTouched",
+    defaultValues: defaultsFrom({ student, profile, initialClassIds }),
+  });
+
+  const values = useWatch({ control: form.control }) as StudentFormValues;
+  const isEdit = mode === "ubah" && student;
 
   const filled = React.useMemo(() => {
-    const required: (keyof FormValues)[] = [
+    const required = [
       "membaca",
       "menulis",
       "berhitung",
@@ -213,52 +275,57 @@ export function ProfilForm({
       "dressed",
       "makan",
       "menggunakanAlat",
-    ];
+    ] as const;
     const done = required.filter((key) => Boolean(values[key])).length;
     return Math.round((done / required.length) * 100);
   }, [values]);
 
-async function goNext(event?: React.MouseEvent<HTMLButtonElement>) {
-    // Jaring pengaman: kalakan event ini, tidak akan pernah menggagalkan
-    // pengiriman formulir walau ada perubahan struktur di masa depan.
+  async function goNext(event?: React.MouseEvent<HTMLButtonElement>) {
     event?.preventDefault();
 
     const valid = await form.trigger(STEP_FIELDS[step], { shouldFocus: true });
     if (!valid) {
-      toast.error("Lengkapi dulu isian pada langkah ini");
+      toast.error("Periksa kembali isian pada langkah ini");
       return;
     }
     setStep((current) => Math.min(current + 1, STEPS.length - 1));
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  async function onSubmit(data: FormValues) {
-    if (data.preferences.length === 0 || data.interactions.length === 0) {
-      toast.error("Pilih minimal satu preferensi belajar dan satu bentuk interaksi");
-      setStep(3);
-      return;
-    }
-setPending(true);
+  async function onSubmit(input: StudentFormValues) {
+    setPending(true);
     try {
       const result = await jalankanAction(() =>
-        saveStudentProfileAction({ studentId, values: data }),
+        saveStudentFormAction({ studentId: student?.id, values: input }),
       );
 
       if (!result.ok) {
-        toast.error("Profil belum tersimpan", { description: result.message });
+        toast.error(
+          isEdit ? "Perubahan belum tersimpan" : "Siswa belum tersimpan",
+          { description: result.message },
+        );
         return;
       }
 
+      const kelas = classes
+        .filter((item) => input.classIds.includes(item.id))
+        .map((item) => item.name);
+
       toast.success(result.message, {
         description:
-          "Materi yang pernah terbit ditandai perlu ditinjau ulang agar tetap sesuai profil terbaru.",
+          kelas.length > 0
+            ? `Kelas: ${kelas.join(", ")}. Profil belajar siap jadi bahan adaptasi materi.`
+            : "Profil belajar siap jadi bahan adaptasi. Tambahkan siswa ke kelas agar bisa mendapat akses QR.",
       });
-      router.push(`/dashboard/siswa/${studentId}`);
+
+      router.push(isEdit ? `/dashboard/siswa/${student?.id}` : "/dashboard/siswa");
       router.refresh();
     } finally {
       setPending(false);
     }
   }
+
+  const submitLabel = isEdit ? "Simpan perubahan" : "Simpan siswa";
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -267,8 +334,8 @@ setPending(true);
           <div>
             <p className="text-sm font-semibold">Kelengkapan pemetaan</p>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Materi hanya boleh diproses AI setelah minimal kemampuan akademik dan
-              bentuk interaksi terisi.
+              Materi hanya boleh diproses setelah minimal kemampuan akademik dan bentuk
+              interaksi terisi.
             </p>
           </div>
           <p className="font-heading text-2xl font-semibold tabular-nums">{filled}%</p>
@@ -279,10 +346,185 @@ setPending(true);
 
       {step === 0 ? (
         <Card className="border-border/80">
+          <CardContent className="space-y-5 pt-6">
+            <div className="grid gap-5 sm:grid-cols-2">
+              <Field
+                label="Nama lengkap"
+                htmlFor="fullName"
+                required
+                error={form.formState.errors.fullName?.message}
+              >
+                <Input
+                  id="fullName"
+                  placeholder="Contoh: Aisyah Putri Ramadhani"
+                  aria-invalid={Boolean(form.formState.errors.fullName)}
+                  {...form.register("fullName")}
+                />
+              </Field>
+
+              <Field
+                label="Nama panggilan"
+                htmlFor="nickname"
+                hint="Dipakai untuk menyapa siswa di layar belajar."
+                error={form.formState.errors.nickname?.message}
+              >
+                <Input
+                  id="nickname"
+                  placeholder="Contoh: Aisyah"
+                  aria-invalid={Boolean(form.formState.errors.nickname)}
+                  {...form.register("nickname")}
+                />
+              </Field>
+
+              <Field
+                label="Usia"
+                htmlFor="age"
+                required
+                error={form.formState.errors.age?.message}
+              >
+                <Input
+                  id="age"
+                  type="number"
+                  min={3}
+                  max={25}
+                  aria-invalid={Boolean(form.formState.errors.age)}
+                  {...form.register("age", { valueAsNumber: true })}
+                />
+              </Field>
+
+              <FieldSet
+                legend="Jenis kelamin"
+                required
+                error={form.formState.errors.gender?.message}
+              >
+                <RadioGroup
+                  value={values.gender}
+                  onValueChange={(value) =>
+                    form.setValue("gender", value as StudentFormValues["gender"], {
+                      shouldValidate: true,
+                    })
+                  }
+                  className="flex gap-4"
+                >
+                  <div className="flex items-center gap-2">
+                    <RadioGroupItem value="L" id="gender-L" />
+                    <Label htmlFor="gender-L">Laki-laki</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <RadioGroupItem value="P" id="gender-P" />
+                    <Label htmlFor="gender-P">Perempuan</Label>
+                  </div>
+                </RadioGroup>
+              </FieldSet>
+            </div>
+
+            <Field
+              label="Jenis hambatan"
+              required
+              hint="Dipakai untuk menentukan rekomendasi adaptasi materi dan tampilan antarmuka."
+              error={form.formState.errors.disabilityType?.message}
+            >
+              <Select
+                value={values.disabilityType}
+                onValueChange={(value) =>
+                  form.setValue(
+                    "disabilityType",
+                    value as StudentFormValues["disabilityType"],
+                    { shouldValidate: true },
+                  )
+                }
+              >
+                <SelectTrigger id="disabilityType" aria-label="Jenis hambatan siswa">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(DISABILITY_LABELS).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {step === 1 ? (
+        <Card className="border-border/80">
+          <CardContent className="space-y-5 pt-6">
+            <FieldSet
+              legend="Masukkan ke kelas"
+              description="Satu siswa boleh mengikuti lebih dari satu kelas. Tiap kelas punya token QR sendiri."
+            >
+              {classes.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Belum ada kelas. Buat kelas terlebih dahulu di halaman Kelas.
+                </p>
+              ) : (
+                <ul className="grid gap-2 sm:grid-cols-2">
+                  {classes.map((item) => {
+                    const checked = values.classIds.includes(item.id);
+                    return (
+                      <li key={item.id}>
+                        <label
+                          htmlFor={`class-${item.id}`}
+                          className={cn(
+                            "flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors",
+                            checked
+                              ? "border-primary bg-accent/50"
+                              : "border-border hover:bg-muted/60",
+                          )}
+                        >
+                          <Checkbox
+                            id={`class-${item.id}`}
+                            className="mt-0.5"
+                            checked={checked}
+                            onCheckedChange={(value) => {
+                              const next =
+                                value === true
+                                  ? [...values.classIds, item.id]
+                                  : values.classIds.filter((id) => id !== item.id);
+                              form.setValue("classIds", next, { shouldValidate: true });
+                            }}
+                          />
+                          <span className="min-w-0">
+                            <span className="block text-sm font-medium">{item.name}</span>
+                            <span className="block text-xs text-muted-foreground">
+                              {item.subject} - {item.room}
+                            </span>
+                          </span>
+                        </label>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </FieldSet>
+
+            <Field
+              label="Catatan guru"
+              htmlFor="notes"
+              hint="Misalnya kebiasaan belajar, kebutuhan khusus saat ujian, atau komunikasi yang dipakai."
+              error={form.formState.errors.notes?.message}
+            >
+              <Textarea
+                id="notes"
+                rows={4}
+                placeholder="Contoh: biasanya menggunakan kalimat singkat dan lebih mudah memahami lewat gambar."
+                {...form.register("notes")}
+              />
+            </Field>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {step === 2 ? (
+        <Card className="border-border/80">
           <CardContent className="space-y-4 pt-6">
             <p className="text-sm leading-relaxed text-muted-foreground">
-              Geser setiap kemampuan sesuai kondisi siswa hari ini. Tidak ada
-              nilai benar atau salah, ini bahan penyesuaian materi.
+              Geser setiap kemampuan sesuai kondisi siswa hari ini. Tidak ada nilai
+              benar atau salah, ini bahan penyesuaian materi.
             </p>
             <SkillSlider
               id="membaca"
@@ -308,11 +550,12 @@ setPending(true);
               label="Catatan akademik"
               htmlFor="academicNotes"
               hint="Misalnya huruf yang sudah dikuasai, alat bantu yang biasa dipakai, atau kendala saat mengerjakan tugas."
+              error={form.formState.errors.academicNotes?.message}
             >
               <Textarea
                 id="academicNotes"
                 rows={3}
-                placeholder="Contoh: sudah mengenal huruf vokal, masih kesulitan untuk huruf berdesbrisasi."
+                placeholder="Contoh: sudah mengenal huruf vokal, masih kesulitan untuk huruf bersambung."
                 {...form.register("academicNotes")}
               />
             </Field>
@@ -320,7 +563,7 @@ setPending(true);
         </Card>
       ) : null}
 
-      {step === 1 ? (
+      {step === 3 ? (
         <div className="space-y-4">
           <Card className="border-border/80">
             <CardContent className="space-y-4 pt-6">
@@ -346,7 +589,7 @@ setPending(true);
               <Field
                 label="Catatan sosial-emosional"
                 htmlFor="socialNotes"
-                {...(profile ? { hint: profile.socialEmotional.catatan } : {})}
+                error={form.formState.errors.socialNotes?.message}
               >
                 <Textarea
                   id="socialNotes"
@@ -374,7 +617,11 @@ setPending(true);
                 value={values.motorKasar}
                 onChange={(next) => form.setValue("motorKasar", next)}
               />
-              <Field label="Catatan motorik" htmlFor="motorNotes">
+              <Field
+                label="Catatan motorik"
+                htmlFor="motorNotes"
+                error={form.formState.errors.motorNotes?.message}
+              >
                 <Textarea
                   id="motorNotes"
                   rows={3}
@@ -387,7 +634,7 @@ setPending(true);
         </div>
       ) : null}
 
-      {step === 2 ? (
+      {step === 4 ? (
         <Card className="border-border/80">
           <CardContent className="space-y-4 pt-6">
             <SkillSlider
@@ -409,7 +656,11 @@ setPending(true);
               onChange={(next) => form.setValue("menggunakanAlat", next)}
               hint="Termasuk memakai sakelar, keyboard, atau alat komunikasi."
             />
-            <Field label="Catatan kemandirian" htmlFor="independenceNotes">
+            <Field
+              label="Catatan kemandirian"
+              htmlFor="independenceNotes"
+              error={form.formState.errors.independenceNotes?.message}
+            >
               <Textarea
                 id="independenceNotes"
                 rows={3}
@@ -421,7 +672,7 @@ setPending(true);
         </Card>
       ) : null}
 
-      {step === 3 ? (
+      {step === 5 ? (
         <div className="grid gap-4 lg:grid-cols-3">
           <div className="space-y-4 lg:col-span-2">
             <Card className="border-border/80">
@@ -430,6 +681,7 @@ setPending(true);
                   legend="Preferensi belajar"
                   required
                   description="AI akan menata urutan penyajian materi berdasarkan preferensi ini."
+                  error={form.formState.errors.preferences?.message}
                 >
                   <div className="grid gap-2 sm:grid-cols-3">
                     {PREFERENCE_OPTIONS.map((option) => {
@@ -437,14 +689,16 @@ setPending(true);
                       return (
                         <label
                           key={option.value}
-                          htmlFor={`prof-pref-${option.value}`}
+                          htmlFor={`pref-${option.value}`}
                           className={cn(
                             "flex cursor-pointer items-start gap-2 rounded-lg border p-3 transition-colors",
-                            checked ? "border-primary bg-accent/50" : "border-border hover:bg-muted/60",
+                            checked
+                              ? "border-primary bg-accent/50"
+                              : "border-border hover:bg-muted/60",
                           )}
                         >
                           <Checkbox
-                            id={`prof-pref-${option.value}`}
+                            id={`pref-${option.value}`}
                             className="mt-0.5"
                             checked={checked}
                             onCheckedChange={(value) =>
@@ -452,12 +706,16 @@ setPending(true);
                                 "preferences",
                                 value === true
                                   ? [...values.preferences, option.value]
-                                  : values.preferences.filter((item) => item !== option.value),
+                                  : values.preferences.filter(
+                                      (item) => item !== option.value,
+                                    ),
                               )
                             }
                           />
                           <span>
-                            <span className="block text-sm font-medium">{option.label}</span>
+                            <span className="block text-sm font-medium">
+                              {option.label}
+                            </span>
                             <span className="block text-xs leading-relaxed text-muted-foreground">
                               {option.hint}
                             </span>
@@ -472,21 +730,24 @@ setPending(true);
                   legend="Bentuk interaksi yang dapat dilakukan siswa"
                   required
                   description="Hanya bentuk interaksi terpilih yang muncul di layar belajar."
+                  error={form.formState.errors.interactions?.message}
                 >
                   <div className="grid gap-2 sm:grid-cols-2">
-                    {INTERACTION_OPTIONS.map((mode) => {
+                    {INTERACTION_VALUES.map((mode) => {
                       const checked = values.interactions.includes(mode);
                       return (
                         <label
                           key={mode}
-                          htmlFor={`prof-int-${mode}`}
+                          htmlFor={`int-${mode}`}
                           className={cn(
                             "flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors",
-                            checked ? "border-primary bg-accent/50" : "border-border hover:bg-muted/60",
+                            checked
+                              ? "border-primary bg-accent/50"
+                              : "border-border hover:bg-muted/60",
                           )}
                         >
                           <Checkbox
-                            id={`prof-int-${mode}`}
+                            id={`int-${mode}`}
                             checked={checked}
                             onCheckedChange={(value) =>
                               form.setValue(
@@ -497,7 +758,9 @@ setPending(true);
                               )
                             }
                           />
-                          <span className="text-sm font-medium">{INTERACTION_LABELS[mode]}</span>
+                          <span className="text-sm font-medium">
+                            {INTERACTION_LABELS[mode]}
+                          </span>
                         </label>
                       );
                     })}
@@ -509,14 +772,14 @@ setPending(true);
                   description="Diterapkan langsung di halaman belajar siswa, termasuk ukuran teks dan kontras."
                 >
                   <div className="grid gap-5 sm:grid-cols-2">
-                    <Field label="Ukuran teks" htmlFor="prof-fontSize">
+                    <Field label="Ukuran teks" htmlFor="fontSize">
                       <Select
                         value={values.fontSize}
                         onValueChange={(value) =>
-                          form.setValue("fontSize", value as SkillLevel)
+                          form.setValue("fontSize", value as StudentFormValues["fontSize"])
                         }
                       >
-                        <SelectTrigger id="prof-fontSize">
+                        <SelectTrigger id="fontSize">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -526,17 +789,18 @@ setPending(true);
                         </SelectContent>
                       </Select>
                     </Field>
-                    <Field label="Kontras" htmlFor="prof-contrast">
+
+                    <Field label="Kontras" htmlFor="contrastMode">
                       <Select
                         value={values.contrastMode}
                         onValueChange={(value) =>
                           form.setValue(
                             "contrastMode",
-                            value as FormValues["contrastMode"],
+                            value as StudentFormValues["contrastMode"],
                           )
                         }
                       >
-                        <SelectTrigger id="prof-contrast">
+                        <SelectTrigger id="contrastMode">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -548,14 +812,18 @@ setPending(true);
                         </SelectContent>
                       </Select>
                     </Field>
-                    <Field label="Kecepatan audio" htmlFor="prof-audio">
+
+                    <Field label="Kecepatan audio" htmlFor="audioSpeed">
                       <Select
                         value={values.audioSpeed}
                         onValueChange={(value) =>
-                          form.setValue("audioSpeed", value as FormValues["audioSpeed"])
+                          form.setValue(
+                            "audioSpeed",
+                            value as StudentFormValues["audioSpeed"],
+                          )
                         }
                       >
-                        <SelectTrigger id="prof-audio">
+                        <SelectTrigger id="audioSpeed">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -567,14 +835,18 @@ setPending(true);
                         </SelectContent>
                       </Select>
                     </Field>
-                    <Field label="Gaya navigasi" htmlFor="prof-nav">
+
+                    <Field label="Gaya navigasi" htmlFor="navStyle">
                       <Select
                         value={values.navStyle}
                         onValueChange={(value) =>
-                          form.setValue("navStyle", value as FormValues["navStyle"])
+                          form.setValue(
+                            "navStyle",
+                            value as StudentFormValues["navStyle"],
+                          )
                         }
                       >
-                        <SelectTrigger id="prof-nav">
+                        <SelectTrigger id="navStyle">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -592,7 +864,7 @@ setPending(true);
 
                   <div className="flex items-center justify-between gap-4">
                     <div>
-                      <Label htmlFor="prof-audioEnabled" className="text-sm">
+                      <Label htmlFor="audioEnabled" className="text-sm">
                         Aktifkan pembacaan audio
                       </Label>
                       <p className="mt-0.5 text-xs text-muted-foreground">
@@ -600,7 +872,7 @@ setPending(true);
                       </p>
                     </div>
                     <Switch
-                      id="prof-audioEnabled"
+                      id="audioEnabled"
                       checked={values.audioEnabled}
                       onCheckedChange={(value) => form.setValue("audioEnabled", value)}
                     />
@@ -619,8 +891,13 @@ setPending(true);
                 id="strengths"
                 label="Kekuatan siswa"
                 hint="Dipakai otomatis saat menyusun tujuan pembelajaran PPI."
-                placeholder="Contoh: ALEBIH kuat konsentrasi"
-                suggestions={["Kuat mengenali warna", "Sabar saat menunggu", "Senang bernyanyi", "Tepat saat meniru"]}
+                placeholder="Contoh: lebih kuat konsentrasi"
+                suggestions={[
+                  "Kuat mengenali warna",
+                  "Sabar saat menunggu",
+                  "Senang bernyanyi",
+                  "Tepat saat meniru",
+                ]}
                 value={values.strengths}
                 onChange={(next) => form.setValue("strengths", next)}
               />
@@ -629,20 +906,42 @@ setPending(true);
                 label="Kendala utama"
                 hint="Menentukan layanan dan alat bantu yang perlu disiapkan."
                 placeholder="Contoh: sulit fokus lebih dari 5 menit"
-                suggestions={["Butuh benda nyata", "Perlu konteks visual", "Mudah lelah", "Sulit membaca ruangan"]}
+                suggestions={[
+                  "Butuh benda nyata",
+                  "Perlu konteks visual",
+                  "Mudah lelah",
+                  "Sulit membaca ruangan",
+                ]}
                 value={values.barriers}
                 onChange={(next) => form.setValue("barriers", next)}
               />
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                Kekuatan dan kendala ini ikut tersimpan di profil belajar dan
+                dipakai ulang saat menyusun dokumen PPI.
+              </p>
             </CardContent>
           </Card>
         </div>
       ) : null}
 
-<WizardFooter
+      {isEdit ? (
+        <p className="text-xs text-muted-foreground">
+          Sumber data utama ada di{" "}
+          <Link
+            href="/panduan#peta-profil"
+            className="underline underline-offset-4"
+          >
+            panduan pemetaan profil
+          </Link>
+          .
+        </p>
+      ) : null}
+
+      <WizardFooter
         step={step}
         stepCount={STEPS.length}
         pending={pending}
-        submitLabel="Simpan profil"
+        submitLabel={submitLabel}
         onBack={() => setStep((current) => Math.max(current - 1, 0))}
         onNext={goNext}
       />

@@ -162,10 +162,10 @@ export default async function StudentDetailPage({
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <Button asChild>
-              <Link href={`/dashboard/siswa/${student.id}/profil`}>
+<Button asChild>
+              <Link href={`/dashboard/siswa/${student.id}/ubah`}>
                 <PencilLine />
-                Sunting profil belajar
+                Ubah data siswa
               </Link>
             </Button>
             <Button variant="outline" asChild>
@@ -303,10 +303,10 @@ export default async function StudentDetailPage({
                 </p>
               </div>
             </div>
-            <Button asChild>
-              <Link href={`/dashboard/siswa/${student.id}/profil`}>
+<Button asChild>
+              <Link href={`/dashboard/siswa/${student.id}/ubah`}>
                 <PencilLine />
-                Lengkapi profil
+                Lengkapi pemetaan
               </Link>
             </Button>
           </CardContent>

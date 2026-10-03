@@ -1,15 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Button } from "@/components/ui/button";
+import { StudentWizard } from "@/components/dashboard/siswa/student-wizard";
 import { getClasses } from "@/db/queries";
-import { SiswaForm } from "@/components/dashboard/siswa/siswa-form";
-import { ArrowLeft } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Tambah Siswa",
   description:
-    "Tambahkan siswa baru beserta identitas, kelas, dan pemetaan awal profil belajarnya.",
+    "Tambahkan siswa baru beserta identitas, kelas, dan pemetaan profil belajarnya.",
 };
 
 export default async function NewStudentPage() {
@@ -19,7 +19,7 @@ export default async function NewStudentPage() {
     <div className="space-y-6">
       <PageHeader
         title="Tambah Siswa"
-        description="Isi identitas dasar siswa, tempatkan di kelas, lalu buat pemetaan awal agar materi bisa diadaptasi dengan tepat."
+        description="Enam langkah: identitas, kelas, kemampuan akademik, sosial dan motorik, kemandirian, lalu preferensi dan interaksi. Langkah mapper boleh dilewati karena sudah terisi bawaan."
         actions={
           <Button variant="outline" asChild>
             <Link href="/dashboard/siswa">
@@ -30,7 +30,7 @@ export default async function NewStudentPage() {
         }
       />
 
-      <SiswaForm classes={classes} />
+      <StudentWizard mode="buat" classes={classes} />
     </div>
   );
 }

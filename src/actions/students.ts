@@ -5,11 +5,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { requireAuthContext } from "@/lib/auth";
 import { withRlsDb } from "@/db/rls";
 import { classStudents, students, studentProfiles } from "@/db/schema";
-import {
-  studentCreateSchema,
-  studentIdentitySchema,
-  studentProfileFormSchema,
-} from "@/lib/validation";
+import { studentFormSchema } from "@/lib/validation";
 import type { SkillLevel } from "@/db/types";
 import type { ActionResult } from "./auth";
 
@@ -22,121 +18,69 @@ function joinNotes(...parts: (string | undefined | null)[]): string {
     .join(" ");
 }
 
-/** Tambah siswa baru beserta profil belajar awal dan keanggotaan kelas. */
-export async function createStudentAction(
-  input: unknown,
-): Promise<ActionResult> {
-  const parsed = studentCreateSchema.safeParse(input);
+/**
+ * Simpan data siswa dari wizard, baik mode menambah maupun menyunting.
+ *
+ * Ketiga bagian disimpan dalam satu transaksi: identitas (tabel students),
+ * profil belajar enam domain (student_profiles), dan keanggotaan kelas
+ * (class_students). Karena satu wizard menangani ketiganya, data tidak mungkin
+ * tersimpan separuh jalan.
+ *
+ * Nilai `academicLevel` tidak diambil dari form, melainkan diturunkan dari
+ * kemampuan membaca, menulis, dan berhitung supaya tidak ada dua sumber
+ * kebenaran untuk hal yang sama.
+ */
+export async function saveStudentFormAction(input: {
+  studentId?: string;
+  values: unknown;
+}): Promise<ActionResult> {
+  const parsed = studentFormSchema.safeParse(input.values);
   if (!parsed.success) {
     return fail(parsed.error.issues[0]?.message ?? "Data siswa belum lengkap.");
   }
   const values = parsed.data;
+  const isEdit = Boolean(input.studentId);
 
-  try {
-    const context = await requireAuthContext();
-    await withRlsDb(context.claims, async (tx) => {
-      const [row] = await tx
-        .insert(students)
-        .values({
-          teacherId: context.userId,
-          fullName: values.fullName.trim(),
-          nickname: values.nickname?.trim() || null,
-          age: values.age,
-          gender: values.gender,
-          disabilityType: values.disabilityType,
-          notes: values.notes?.trim() || null,
-        })
-        .returning({ id: students.id });
-
-      await tx.insert(studentProfiles).values({
-        studentId: row.id,
-        academicLevel: values.academicLevel,
-        academicDetails: {
-          membaca: values.academicLevel,
-          menulis: values.academicLevel,
-          berhitung: values.academicLevel,
-        },
-        socialEmotional: {
-          mengenaliOrang: values.academicLevel,
-          bekerjaSama: values.academicLevel,
-          mengaturEmosi: values.academicLevel,
-          catatan: "Pemetaan awal saat siswa ditambahkan.",
-        },
-        motorSkills: {
-          motorHalus: values.academicLevel,
-          motorKasar: values.academicLevel,
-          catatan: "",
-        },
-        independence: {
-          dressed: values.academicLevel,
-          makan: values.academicLevel,
-          menggunakanAlat: values.academicLevel,
-          catatan: "",
-        },
-        learningPreferences: {
-          visual: values.preferences.includes("visual"),
-          audio: values.preferences.includes("audio"),
-          kinestetik: values.preferences.includes("kinestetik"),
-        },
-        interactionModes: {
-          touch: values.interactions.includes("touch"),
-          speech: values.interactions.includes("speech"),
-          keyboard: values.interactions.includes("keyboard"),
-          switch: values.interactions.includes("switch"),
-          drag: values.interactions.includes("drag"),
-        },
-        uiTokens: {
-          fontSize: values.fontSize,
-          contrastMode: values.contrastMode,
-          audioEnabled: values.audioEnabled,
-          audioSpeed: values.audioSpeed,
-          navStyle: values.navStyle,
-        },
-      });
-
-      if (values.classIds.length > 0) {
-        await tx.insert(classStudents).values(
-          values.classIds.map((classId) => ({ classId, studentId: row.id })),
-        );
-      }
-    });
-
-    revalidatePath("/dashboard/siswa");
-    revalidatePath("/dashboard/siswa/baru");
-    revalidatePath("/dashboard", "layout");
-    return { ok: true, message: `${values.fullName} berhasil ditambahkan.` };
-  } catch (error) {
-    return fail(
-      error instanceof Error ? error.message : "Siswa gagal disimpan.",
-    );
-  }
-}
-
-/** Simpan hasil pemetaan profil belajar lengkap. */
-export async function saveStudentProfileAction(input: {
-  studentId: string;
-  values: unknown;
-}): Promise<ActionResult> {
-  const parsed = studentProfileFormSchema.safeParse(input.values);
-  if (!parsed.success) {
-    return fail(
-      parsed.error.issues[0]?.message ?? "Profil belajar belum lengkap.",
-    );
-  }
-  const values = parsed.data;
   const level: SkillLevel =
     values.membaca === "high" || values.menulis === "high" ? "high" : "medium";
 
   try {
     const context = await requireAuthContext();
-    await withRlsDb(context.claims, async (tx) => {
-      const [existing] = await tx
-        .select({ id: studentProfiles.id })
-        .from(studentProfiles)
-        .where(eq(studentProfiles.studentId, input.studentId))
-        .limit(1);
 
-      const payload = {
+    await withRlsDb(context.claims, async (tx) => {
+      let studentId = input.studentId ?? "";
+
+      if (studentId) {
+        const updated = await tx
+          .update(students)
+          .set({
+            fullName: values.fullName.trim(),
+            nickname: values.nickname?.trim() || null,
+            age: values.age,
+            gender: values.gender,
+            disabilityType: values.disabilityType,
+            notes: values.notes?.trim() || null,
+          })
+          .where(eq(students.id, studentId))
+          .returning({ id: students.id });
+        if (updated.length === 0) throw new Error("Siswa tidak ditemukan.");
+      } else {
+        const [row] = await tx
+          .insert(students)
+          .values({
+            teacherId: context.userId,
+            fullName: values.fullName.trim(),
+            nickname: values.nickname?.trim() || null,
+            age: values.age,
+            gender: values.gender,
+            disabilityType: values.disabilityType,
+            notes: values.notes?.trim() || null,
+          })
+          .returning({ id: students.id });
+        studentId = row.id;
+      }
+
+      const profilePayload = {
         academicLevel: level,
         academicDetails: {
           membaca: values.membaca,
@@ -150,7 +94,9 @@ export async function saveStudentProfileAction(input: {
           mengaturEmosi: values.mengaturEmosi,
           catatan: joinNotes(
             values.socialNotes,
-            values.strengths.length ? `Kekuatan: ${values.strengths.join(", ")}.` : "",
+            values.strengths.length
+              ? `Kekuatan: ${values.strengths.join(", ")}.`
+              : "",
             values.barriers.length ? `Kendala: ${values.barriers.join(", ")}.` : "",
           ),
         },
@@ -187,66 +133,63 @@ export async function saveStudentProfileAction(input: {
         updatedAt: new Date().toISOString(),
       };
 
+      const [existing] = await tx
+        .select({ id: studentProfiles.id })
+        .from(studentProfiles)
+        .where(eq(studentProfiles.studentId, studentId))
+        .limit(1);
+
       if (existing) {
         await tx
           .update(studentProfiles)
-          .set(payload)
+          .set(profilePayload)
           .where(eq(studentProfiles.id, existing.id));
       } else {
-        await tx.insert(studentProfiles).values({
-          studentId: input.studentId,
-          ...payload,
-        });
+        await tx.insert(studentProfiles).values({ studentId, ...profilePayload });
+      }
+
+      const current = await tx
+        .select({ studentId: classStudents.studentId })
+        .from(classStudents)
+        .where(eq(classStudents.studentId, studentId));
+      const currentIds = new Set(current.map((row) => row.studentId));
+      const nextIds = new Set(values.classIds);
+
+      const removed = [...currentIds].filter((id) => !nextIds.has(id));
+      if (removed.length > 0) {
+        await tx
+          .delete(classStudents)
+          .where(
+            and(
+              eq(classStudents.studentId, studentId),
+              inArray(classStudents.classId, removed),
+            ),
+          );
+      }
+
+      const added = [...nextIds].filter((id) => !currentIds.has(id));
+      if (added.length > 0) {
+        await tx
+          .insert(classStudents)
+          .values(added.map((classId) => ({ classId, studentId })));
       }
     });
 
-    revalidatePath(`/dashboard/siswa/${input.studentId}`);
-    revalidatePath(`/dashboard/siswa/${input.studentId}/profil`);
     revalidatePath("/dashboard/siswa");
+    revalidatePath("/dashboard/siswa/baru");
+    if (input.studentId) revalidatePath(`/dashboard/siswa/${input.studentId}`);
+    if (input.studentId) revalidatePath(`/dashboard/siswa/${input.studentId}/ubah`);
+    revalidatePath("/dashboard/kelas");
     revalidatePath("/dashboard", "layout");
-    return { ok: true, message: "Profil belajar tersimpan." };
+
+    return {
+      ok: true,
+      message: isEdit
+        ? `${values.fullName.trim()} tersimpan.`
+        : `${values.fullName.trim()} berhasil ditambahkan.`,
+    };
   } catch (error) {
-    return fail(
-      error instanceof Error ? error.message : "Profil gagal disimpan.",
-    );
-  }
-}
-
-/** Ubah identitas siswa. */
-export async function updateStudentIdentityAction(input: {
-  studentId: string;
-  values: unknown;
-}): Promise<ActionResult> {
-  const parsed = studentIdentitySchema.safeParse(input.values);
-  if (!parsed.success) {
-    return fail(parsed.error.issues[0]?.message ?? "Data siswa belum lengkap.");
-  }
-  const values = parsed.data;
-
-  try {
-    const context = await requireAuthContext();
-    await withRlsDb(context.claims, async (tx) => {
-      await tx
-        .update(students)
-        .set({
-          fullName: values.fullName.trim(),
-          nickname: values.nickname?.trim() || null,
-          age: values.age,
-          gender: values.gender,
-          disabilityType: values.disabilityType,
-          notes: values.notes?.trim() || null,
-        })
-        .where(eq(students.id, input.studentId));
-    });
-
-    revalidatePath(`/dashboard/siswa/${input.studentId}`);
-    revalidatePath("/dashboard/siswa");
-    revalidatePath("/dashboard", "layout");
-    return { ok: true, message: "Identitas siswa tersimpan." };
-  } catch (error) {
-    return fail(
-      error instanceof Error ? error.message : "Identitas gagal disimpan.",
-    );
+    return fail(error instanceof Error ? error.message : "Siswa gagal disimpan.");
   }
 }
 
@@ -255,20 +198,22 @@ export async function deleteStudentAction(studentId: string): Promise<ActionResu
   try {
     const context = await requireAuthContext();
     await withRlsDb(context.claims, async (tx) => {
-      await tx.delete(students).where(eq(students.id, studentId));
+      const deleted = await tx
+        .delete(students)
+        .where(eq(students.id, studentId))
+        .returning({ id: students.id });
+      if (deleted.length === 0) throw new Error("Siswa tidak ditemukan.");
     });
 
     revalidatePath("/dashboard/siswa");
     revalidatePath("/dashboard", "layout");
     return { ok: true, message: "Siswa dihapus beserta seluruh datanya." };
   } catch (error) {
-    return fail(
-      error instanceof Error ? error.message : "Siswa gagal dihapus.",
-    );
+    return fail(error instanceof Error ? error.message : "Siswa gagal dihapus.");
   }
 }
 
-/** Ganti daftar siswa dalam satu kelas. */
+/** Ganti daftar siswa dalam satu kelas tanpa menyentuh kelas lain. */
 export async function setClassStudentsAction(input: {
   classId: string;
   studentIds: string[];
@@ -306,6 +251,7 @@ export async function setClassStudentsAction(input: {
     revalidatePath(`/dashboard/kelas/${input.classId}`);
     revalidatePath(`/dashboard/kelas/${input.classId}/qr`);
     revalidatePath("/dashboard/kelas");
+    revalidatePath("/dashboard/siswa");
     revalidatePath("/dashboard", "layout");
     return { ok: true, message: "Anggota kelas tersimpan." };
   } catch (error) {

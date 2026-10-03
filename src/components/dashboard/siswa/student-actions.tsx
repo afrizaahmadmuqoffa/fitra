@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Loader2, MoreHorizontal, Pencil, Trash2, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
@@ -21,13 +22,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { StudentIdentityForm } from "@/components/dashboard/siswa/student-identity-form";
 import { deleteStudentAction } from "@/actions/students";
 import { jalankanAction } from "@/lib/action-helpers";
 import type { Student } from "@/db/types";
 
 /**
- * Aksi siswa pada halaman detail: ubah identitas dan hapus siswa.
+ * Aksi siswa pada halaman detail: ubah data siswa dan hapus.
  *
  * Menghapus siswa bersifat permanen dan berantai: profil belajar,
  * keanggotaan kelas, versi adaptasi, token QR, serta riwayat belajar dan
@@ -35,7 +35,6 @@ import type { Student } from "@/db/types";
  */
 export function StudentActions({ student }: { student: Student }) {
   const router = useRouter();
-  const [editOpen, setEditOpen] = React.useState(false);
   const [deleteOpen, setDeleteOpen] = React.useState(false);
   const [pending, setPending] = React.useState(false);
 
@@ -59,16 +58,18 @@ export function StudentActions({ student }: { student: Student }) {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" aria-label={`Aksi untuk ${student.fullName}`}>
+          <Button variant="outline" aria-label={`Kelola ${student.fullName}`}>
             <MoreHorizontal aria-hidden />
             Kelola
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
           <DropdownMenuLabel>Aksi siswa</DropdownMenuLabel>
-          <DropdownMenuItem onSelect={() => setEditOpen(true)}>
-            <Pencil aria-hidden />
-            Ubah identitas
+          <DropdownMenuItem asChild>
+            <Link href={`/dashboard/siswa/${student.id}/ubah`}>
+              <Pencil aria-hidden />
+              Ubah data siswa
+            </Link>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
@@ -80,25 +81,6 @@ export function StudentActions({ student }: { student: Student }) {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="sm:max-w-xl">
-          <DialogHeader>
-            <DialogTitle>Ubah identitas {student.fullName}</DialogTitle>
-            <DialogDescription>
-              Kelas, profil belajar, dan materi tidak ikut berubah di sini.
-              Perubahan tingkat kemampuan ada di halaman Profil Belajar.
-            </DialogDescription>
-          </DialogHeader>
-          <StudentIdentityForm
-            student={student}
-            onDone={() => {
-              setEditOpen(false);
-              router.refresh();
-            }}
-          />
-        </DialogContent>
-      </Dialog>
 
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <DialogContent className="sm:max-w-md">
