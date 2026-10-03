@@ -7,6 +7,7 @@ import { withRlsDb } from "@/db/rls";
 import { classStudents, students, studentProfiles } from "@/db/schema";
 import {
   studentCreateSchema,
+  studentIdentitySchema,
   studentProfileFormSchema,
 } from "@/lib/validation";
 import type { SkillLevel } from "@/db/types";
@@ -216,9 +217,7 @@ export async function updateStudentIdentityAction(input: {
   studentId: string;
   values: unknown;
 }): Promise<ActionResult> {
-  const parsed = studentCreateSchema
-    .pick({ fullName: true, nickname: true, age: true, gender: true, disabilityType: true, notes: true })
-    .safeParse(input.values);
+  const parsed = studentIdentitySchema.safeParse(input.values);
   if (!parsed.success) {
     return fail(parsed.error.issues[0]?.message ?? "Data siswa belum lengkap.");
   }

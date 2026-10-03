@@ -4,9 +4,9 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { saveStudentProfileAction } from "@/actions/students";
 import { jalankanAction } from "@/lib/action-helpers";
+import { WizardFooter } from "@/components/dashboard/wizard-footer";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -32,7 +32,6 @@ import {
   NAV_STYLE_LABELS,
 } from "@/lib/constants";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, ArrowRight, Loader2, Save } from "lucide-react";
 import type { SkillLevel, StudentProfile } from "@/lib/dummy/types";
 
 const LEVELS: SkillLevel[] = ["low", "medium", "high"];
@@ -219,7 +218,11 @@ export function ProfilForm({
     return Math.round((done / required.length) * 100);
   }, [values]);
 
-  async function goNext() {
+async function goNext(event?: React.MouseEvent<HTMLButtonElement>) {
+    // Jaring pengaman: kalakan event ini, tidak akan pernah menggagalkan
+    // pengiriman formulir walau ada perubahan struktur di masa depan.
+    event?.preventDefault();
+
     const valid = await form.trigger(STEP_FIELDS[step], { shouldFocus: true });
     if (!valid) {
       toast.error("Lengkapi dulu isian pada langkah ini");
@@ -635,28 +638,14 @@ setPending(true);
         </div>
       ) : null}
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => setStep((current) => Math.max(current - 1, 0))}
-          disabled={step === 0}
-        >
-          <ArrowLeft />
-          Kembali
-        </Button>
-        {step < STEPS.length - 1 ? (
-          <Button type="button" onClick={goNext}>
-            Lanjut
-            <ArrowRight />
-          </Button>
-        ) : (
-<Button type="submit" disabled={pending}>
-            {pending ? <Loader2 className="animate-spin" aria-hidden /> : <Save />}
-            Simpan profil
-          </Button>
-        )}
-      </div>
+<WizardFooter
+        step={step}
+        stepCount={STEPS.length}
+        pending={pending}
+        submitLabel="Simpan profil"
+        onBack={() => setStep((current) => Math.max(current - 1, 0))}
+        onNext={goNext}
+      />
     </form>
   );
 }

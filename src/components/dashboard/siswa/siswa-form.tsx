@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createStudentAction } from "@/actions/students";
 import { jalankanAction } from "@/lib/action-helpers";
+import { WizardFooter } from "@/components/dashboard/wizard-footer";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
@@ -37,7 +38,6 @@ import {
 } from "@/lib/constants";
 import { disabilityTypeSchema, skillLevelSchema } from "@/lib/validation";
 import { cn } from "@/lib/utils";
-import { ArrowLeft, ArrowRight, Loader2, Save } from "lucide-react";
 import type { ClassRoom } from "@/lib/dummy/types";
 
 const formSchema = z.object({
@@ -141,7 +141,11 @@ export function SiswaForm({ classes }: { classes: ClassRoom[] }) {
 
   const identity = useWatch({ control: form.control }) as FormValues;
 
-  async function goNext() {
+async function goNext(event?: React.MouseEvent<HTMLButtonElement>) {
+    // Jaring pengaman: kalakan event ini, tidak akan pernah menggagalkan
+    // pengiriman formulir walau ada perubahan struktur di masa depan.
+    event?.preventDefault();
+
     const valid = await form.trigger(STEP_FIELDS[step], { shouldFocus: true });
     if (!valid) {
       toast.error("Periksa kembali isian pada langkah ini");
@@ -649,28 +653,14 @@ async function onSubmit(values: FormValues) {
         </div>
       ) : null}
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => setStep((current) => Math.max(current - 1, 0))}
-          disabled={step === 0}
-        >
-          <ArrowLeft />
-          Kembali
-        </Button>
-        {step < STEPS.length - 1 ? (
-          <Button type="button" onClick={goNext}>
-            Lanjut
-            <ArrowRight />
-          </Button>
-        ) : (
-<Button type="submit" disabled={pending}>
-            {pending ? <Loader2 className="animate-spin" aria-hidden /> : <Save />}
-            Simpan siswa
-          </Button>
-        )}
-      </div>
+<WizardFooter
+        step={step}
+        stepCount={STEPS.length}
+        pending={pending}
+        submitLabel="Simpan siswa"
+        onBack={() => setStep((current) => Math.max(current - 1, 0))}
+        onNext={goNext}
+      />
     </form>
   );
 }

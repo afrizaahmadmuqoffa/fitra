@@ -5,10 +5,12 @@ import {
   getClass,
   getClassMaterials,
   getClassStudents,
+  getStudents,
   getTokens,
 } from "@/db/queries";
 import { MATERIAL_STATUS } from "@/lib/constants";
 import { PageHeader } from "@/components/dashboard/page-header";
+import { ClassMembersManager } from "@/components/dashboard/kelas/class-members-manager";
 import { ToneBadge, formatTanggal } from "@/components/dashboard/feedback";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -49,10 +51,11 @@ export default async function ClassDetailPage({
   const item = await getClass(id);
   if (!item) notFound();
 
-  const [students, materials, tokens] = await Promise.all([
+  const [students, materials, tokens, allStudents] = await Promise.all([
     getClassStudents(id),
     getClassMaterials(id),
     getTokens(id),
+    getStudents(),
   ]);
 
   const tokenByStudent = new Map(tokens.map((token) => [token.studentId, token]));
@@ -83,6 +86,11 @@ export default async function ClassDetailPage({
                 Unggah materi
               </Link>
             </Button>
+            <ClassMembersManager
+              classRoom={item}
+              members={students}
+              allStudents={allStudents}
+            />
           </>
         }
       />

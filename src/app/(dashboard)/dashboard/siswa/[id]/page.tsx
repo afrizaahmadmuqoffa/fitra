@@ -30,6 +30,7 @@ import {
   formatWaktu,
 } from "@/components/dashboard/feedback";
 import { InteractionModeList, PreferenceChips, SkillBarList } from "@/components/dashboard/siswa/profile-summary";
+import { StudentActions } from "@/components/dashboard/siswa/student-actions";
 import {
   ArrowLeft,
   BookOpen,
@@ -179,6 +180,7 @@ export default async function StudentDetailPage({
                 Susun PPI
               </Link>
             </Button>
+            <StudentActions student={student} />
           </div>
         </CardContent>
       </Card>
