@@ -236,7 +236,7 @@ async function mintaUrlGambar(input: {
         // Galat yang perlu diulang: 429 dan 5xx.
         const bisaDiulang = response.status === 429 || response.status >= 500;
         if (!bisaDiulang || percobaan === PERCOBAAN_MAKS) throw galat;
-        const jeda = 2000 ** percobaan;
+        const jeda = 2000 * (2 ** percobaan);
         debug.info("menunggu sebelum mencoba lagi", { jeda_ms: jeda });
         await tunggu(jeda);
         continue;
@@ -266,7 +266,7 @@ async function mintaUrlGambar(input: {
       }
       galatTerakhir = error;
       if (percobaan < PERCOBAAN_MAKS) {
-        await tunggu(2000 ** percobaan);
+        await tunggu(2000 * (2 ** percobaan));
         continue;
       }
     }

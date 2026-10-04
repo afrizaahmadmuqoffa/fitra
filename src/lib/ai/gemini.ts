@@ -300,7 +300,7 @@ export async function generateJson<T>(opsi: OpsiGenerateJson<T>): Promise<HasilG
 
       const masihSisa = percobaan < PERCOBAAN_MAKS;
       if (masihSisa) {
-        const jeda = 2000 ** percobaan;
+        const jeda = 2000 * (2 ** percobaan);
         debug.info("menunggu sebelum mencoba lagi", { jeda_ms: jeda });
         await tunggu(jeda);
         continue;
