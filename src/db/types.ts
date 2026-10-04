@@ -200,6 +200,8 @@ export interface MaterialAdaptation {
   id: string;
   materialId: string;
   studentId: string;
+  /** Nomor versi; regenerasi menambah satu tanpa menghapus versi lama. */
+  version: number;
   status: AdaptationStatus;
   adaptedContent: AdaptedContent;
   aiModel: string;

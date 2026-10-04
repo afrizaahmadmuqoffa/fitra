@@ -71,6 +71,8 @@ export default async function StudentPlayerPage({
             drag: false,
           }
         }
+        token={token}
+        adaptationId={adaptationId}
         listHref={`/belajar/${token}/sesi`}
         doneHref={`/belajar/${token}/selesai`}
       />

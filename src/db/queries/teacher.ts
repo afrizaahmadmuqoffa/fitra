@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { requireAuthContext } from "@/lib/auth";
+import { tandatamani } from "@/lib/storage-signed";
 import { redirect } from "next/navigation";
 import { withRlsDb, type RlsTx } from "../rls";
 import {
@@ -185,6 +186,7 @@ export function toAdaptation(row: AdaptationRow): MaterialAdaptation {
     id: row.id,
     materialId: row.materialId,
     studentId: row.studentId,
+    version: row.version,
     status: row.status,
     adaptedContent: row.adaptedContent ?? EMPTY_ADAPTED,
     aiModel: row.aiModel ?? "",
@@ -204,6 +206,8 @@ export function toAsset(row: AssetRow): VisualAsset {
     model: row.model,
     altText: row.altText,
     status: row.status as VisualAsset["status"],
+    // Fallback untuk data lama yang imageUrl-nya masih URL publik. Aset baru
+    // memakai storagePath lalu ditandatangani saat dibaca.
     imageUrl: row.imageUrl ?? null,
     createdAt: row.createdAt,
   };
@@ -482,7 +486,7 @@ export const getMaterialAdaptations = cache(
         .select()
         .from(materialAdaptations)
         .where(eq(materialAdaptations.materialId, materialId))
-        .orderBy(desc(materialAdaptations.createdAt)),
+        .orderBy(desc(materialAdaptations.version), desc(materialAdaptations.createdAt)),
     );
     return rows.map(toAdaptation);
   },
@@ -500,6 +504,9 @@ export const getAdaptation = cache(
             eq(materialAdaptations.studentId, studentId),
           ),
         )
+        // Satu siswa bisa punya banyak versi. Tanpa pengurutan ini, limit 1
+        // bisa mengembalikan versi lama dan bukan versi terbaru.
+        .orderBy(desc(materialAdaptations.version))
         .limit(1),
     );
     return rows[0] ? toAdaptation(rows[0]) : null;
@@ -544,7 +551,13 @@ export const getVisualAssets = cache(
         .where(eq(visualAssets.materialAdaptationId, adaptationId))
         .orderBy(visualAssets.sectionIndex),
     );
-    return rows.map(toAsset);
+
+    // Bucket privat: jalur di database diganti signed URL agar bisa dirender.
+    const bertanda = await tandatamani(rows.map((row) => row.storagePath));
+    return rows.map((row) => ({
+      ...toAsset(row),
+      imageUrl: bertanda.get(row.storagePath) ?? row.imageUrl ?? null,
+    }));
   },
 );
 

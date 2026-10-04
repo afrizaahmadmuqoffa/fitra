@@ -252,6 +252,7 @@ async function main() {
       .values({
         materialId: materialIdMap.get(dummy.materialId)!,
         studentId: studentIdMap.get(dummy.studentId)!,
+        version: dummy.version,
         status,
         adaptedContent: {
           ...dummy.adaptedContent,

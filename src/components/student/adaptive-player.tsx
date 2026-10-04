@@ -13,6 +13,11 @@ import { cn } from "@/lib/utils";
 import { AUDIO_SPEED_VALUE } from "@/lib/constants";
 import { cocokkanJawaban } from "@/lib/answer-match";
 import {
+  completeLearningSessionAction,
+  recordProgressAction,
+  startLearningSessionAction,
+} from "@/actions/student";
+import {
   ArrowLeft,
   ArrowRight,
   Check,
@@ -62,6 +67,16 @@ type Naskah = "materi" | "soal";
 
 function nomorUrut(n: number): string {
   return KATA_PENANDA[n] ?? `ke-${n + 1}`;
+}
+
+/**
+ * Waktu berjalan untuk menghitung durasi belajar.
+ *
+ * Dipisah ke luar komponen supaya pemanggilnya tidak terlihat sebagai bagian
+ * dari render, yang tidak boleh menjalankan fungsi murni.
+ */
+function waktuSekarang(): number {
+  return performance.now();
 }
 
 /** Material title plus body lines, joined as one speakable script. */
@@ -114,6 +129,8 @@ export function AdaptivePlayer({
   assets,
   uiTokens,
   modes,
+  token,
+  adaptationId,
   listHref,
   doneHref,
 }: {
@@ -124,6 +141,10 @@ export function AdaptivePlayer({
   assets: VisualAsset[];
   uiTokens: PlayerUiTokens;
   modes: PlayerModes;
+  /** Token QR yang sedang dipakai; dipakai untuk mencatat progres. */
+  token: string;
+  /** Id adaptasi yang sedang dibuka. */
+  adaptationId: string;
   listHref: string;
   doneHref: string;
 }) {
@@ -144,6 +165,14 @@ export function AdaptivePlayer({
   } | null>(null);
   /** True once the browser reports word boundaries; disables the timer fallback. */
   const [batasKataDipakai, setBatasKataDipakai] = React.useState(false);
+
+  // Pencatatan sesi belajar (PRD 6.F dan 3.5). Sesi dibuka sekali saat materi
+  // dibuka, setiap jawaban dicatat per bagian, lalu sesi ditutup saat siswa
+  // selesai. Kegagalan pencatatan tidak boleh mengganggu belajar, jadi
+  // hasilnya hanya dipakai untuk bookkeeping.
+  const [sessionId, setSessionId] = React.useState<string | null>(null);
+  const mulaiSesiRef = React.useRef<number>(0);
+  const masukBagianRef = React.useRef<Record<number, number>>({});
 
   const section = sections[index];
   const interaction = section?.interactions[0] ?? null;
@@ -311,21 +340,75 @@ export function AdaptivePlayer({
     };
   }, []);
 
+  // Buka sesi belajar sekali saat materi dibuka (PRD 6.F).
+  React.useEffect(() => {
+    let batal = false;
+    mulaiSesiRef.current = waktuSekarang();
+
+    void (async () => {
+      try {
+        const hasil = await startLearningSessionAction({ token, adaptationId });
+        if (batal) return;
+        if (hasil.ok && hasil.sessionId) {
+          setSessionId(hasil.sessionId);
+        }
+      } catch {
+        // Pencatatan gagal tidak boleh menghentikan belajar.
+      }
+    })();
+
+    return () => {
+      batal = true;
+    };
+  }, [token, adaptationId]);
+
   function goToSection(next: number) {
     stopSpeaking();
     setIndex(next);
     setTyped("");
     setHeard("");
     setPerluKonfirmasi(null);
+    masukBagianRef.current[next] = waktuSekarang();
     if (typeof window !== "undefined") {
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
   }
 
-  function submitAnswer(response: string, correct: boolean) {
+  /** Catat satu jawaban ke progress_records tanpa mengganggu layar. */
+  function catatJawaban(
+    sectionIndex: number,
+    interactionType: string,
+    response: string,
+    correct: boolean,
+  ) {
+    if (!sessionId) return;
+    const masuk = masukBagianRef.current[sectionIndex] ?? waktuSekarang();
+    void recordProgressAction({
+      token,
+      sessionId,
+      sectionIndex,
+      interactionType,
+      response,
+      isCorrect: correct,
+      timeSpentSeconds: Math.max(
+        0,
+        Math.round((waktuSekarang() - masuk) / 1000),
+      ),
+    }).catch(() => {
+      // Sengaja diabaikan: siswa tidak boleh gagal belajar karena log tidak
+      // tersimpan.
+    });
+  }
+
+  function submitAnswer(
+    response: string,
+    correct: boolean,
+    interactionType = "touch",
+  ) {
     if (answered) return;
     setPerluKonfirmasi(null);
     setAnswers((current) => ({ ...current, [index]: { response, correct } }));
+    catatJawaban(index, interactionType, response, correct);
     stopSpeaking();
   }
 
@@ -343,7 +426,7 @@ export function AdaptivePlayer({
     const hasil = cocokkanJawaban(teks, interaction.acceptedAnswers);
 
     if (hasil.benar) {
-      submitAnswer(teks || cadangan, true);
+      submitAnswer(teks || cadangan, true, asal === "suara" ? "speech" : "text");
       return;
     }
 
@@ -352,12 +435,12 @@ export function AdaptivePlayer({
       return;
     }
 
-    submitAnswer(teks || cadangan, false);
+    submitAnswer(teks || cadangan, false, asal === "suara" ? "speech" : "text");
   }
 
   function konfirmasiBenar() {
     if (!perluKonfirmasi) return;
-    submitAnswer(perluKonfirmasi.jawaban, true);
+    submitAnswer(perluKonfirmasi.jawaban, true, "speech");
   }
 
   function konfirmasiUlangi() {
@@ -408,6 +491,22 @@ export function AdaptivePlayer({
 
   function finish() {
     const total = sections.filter((item) => item.interactions.length > 0).length;
+
+    // Tutup sesi sebelum pindah halaman supaya durasi benar-benar tersimpan.
+    if (sessionId) {
+      const durasi = Math.max(
+        1,
+        Math.round((waktuSekarang() - mulaiSesiRef.current) / 1000),
+      );
+      void completeLearningSessionAction({
+        token,
+        sessionId,
+        durationSeconds: durasi,
+      }).catch(() => {
+        // Layarifinal tetap dibuka walau pencatatan gagal.
+      });
+    }
+
     router.push(
       `${doneHref}?benar=${correctCount}&dijawab=${Object.keys(answers).length}&total=${total}`,
     );

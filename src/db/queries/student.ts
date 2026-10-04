@@ -2,6 +2,7 @@ import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { withServiceDb } from "../rls";
 import { hashToken } from "@/lib/tokens";
 import { DISABILITY_LABELS } from "@/lib/constants";
+import { tandatamani } from "@/lib/storage-signed";
 import {
   classStudents,
   classes,
@@ -239,6 +240,11 @@ export async function getApprovedAdaptation(
       .where(eq(visualAssets.materialAdaptationId, adaptationId))
       .orderBy(visualAssets.sectionIndex);
 
+    // Bucket privat: gambar disajikan lewat signed URL, bukan URL mentah.
+    const bertanda = await tandatamani(
+      assetRows.map((entry) => entry.storagePath),
+    );
+
     return {
       state,
       adaptation: toAdaptation(row.adaptation),
@@ -255,7 +261,10 @@ export async function getApprovedAdaptation(
         aiAnalysis: row.material.aiAnalysis ?? null,
         createdAt: row.material.createdAt,
       },
-      assets: assetRows.map(toAsset),
+      assets: assetRows.map((entry) => ({
+        ...toAsset(entry),
+        imageUrl: bertanda.get(entry.storagePath) ?? entry.imageUrl ?? null,
+      })),
       studentId: row.adaptation.studentId,
     };
   });

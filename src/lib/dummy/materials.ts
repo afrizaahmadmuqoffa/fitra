@@ -607,6 +607,7 @@ export const adaptations: MaterialAdaptation[] = students.flatMap((student) => {
       id,
       materialId: target.materialId,
       studentId: student.id,
+      version: 1,
       status: hasSeeds ? target.status : "generating",
       adaptedContent: buildAdaptedContent(target.materialId, student.id),
       aiModel: "gemini-3.8-flash",

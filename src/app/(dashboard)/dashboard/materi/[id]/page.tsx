@@ -213,9 +213,15 @@ export default async function MaterialDetailPage({
       </Card>
 
       <div className="space-y-3">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Layers className="size-4 text-primary" aria-hidden="true" />
           <h2 className="font-heading text-lg font-semibold">Adaptasi per siswa</h2>
+          <Button variant="ghost" size="sm" asChild className="ml-auto">
+            <Link href={`/dashboard/materi/${material.id}/adaptasi`}>
+              Lihat semua versi
+              <ArrowLeft className="size-4 rotate-180" aria-hidden="true" />
+            </Link>
+          </Button>
         </div>
 
         {targetStudents.length === 0 ? (
