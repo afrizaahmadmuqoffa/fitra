@@ -4,7 +4,14 @@ import { revalidatePath } from "next/cache";
 import { and, eq, inArray } from "drizzle-orm";
 import { requireAuthContext } from "@/lib/auth";
 import { withRlsDb } from "@/db/rls";
-import { classStudents, students, studentProfiles } from "@/db/schema";
+import {
+  classStudents,
+  materials,
+  materialAdaptations,
+  notifications,
+  students,
+  studentProfiles,
+} from "@/db/schema";
 import { studentFormSchema } from "@/lib/validation";
 import type { SkillLevel } from "@/db/types";
 import type { ActionResult } from "./auth";
@@ -178,6 +185,40 @@ export async function saveStudentFormAction(input: {
           // Simpan berulang tidak boleh gagal: index unique tetap menjaga data,
           // baris yang sudah ada dilewati diam-diam.
           .onConflictDoNothing();
+      }
+
+      // PRD 6.A: perubahan profil otomatis menandai materi yang pernah
+      // diterbitkan sebagai perlu ditinjau ulang. Tanpa ini, adaptasi lama
+      // masih berjalan padahal cara belajar siswa sudah berubah.
+      const [terbit] = await tx
+        .select({ id: materials.id, judul: materials.title })
+        .from(materials)
+        .innerJoin(
+          materialAdaptations,
+          eq(materialAdaptations.materialId, materials.id),
+        )
+        .where(
+          and(
+            eq(materialAdaptations.studentId, studentId),
+            eq(materials.status, "published"),
+            eq(materials.needsReview, false),
+          ),
+        )
+        .limit(10);
+
+      if (terbit) {
+        await tx
+          .update(materials)
+          .set({ needsReview: true })
+          .where(eq(materials.id, terbit.id));
+
+        await tx.insert(notifications).values({
+          userId: context.userId,
+          title: `Materi untuk ${values.fullName} perlu ditinjau ulang`,
+          body: `Profil belajar berubah, sehingga materi "${terbit.judul}" yang sudah terbit mungkin tidak pas lagi.`,
+          type: "review",
+          link: "/dashboard/materi",
+        });
       }
     });
 

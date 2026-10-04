@@ -14,10 +14,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Loader2, RefreshCw, Send } from "lucide-react";
-import {
-  analyzeMaterialAgainAction,
-  publishMaterialAction,
-} from "@/actions/materials";
+import { publishMaterialAction } from "@/actions/materials";
+import { reanalyzeMaterialAction } from "@/actions/ai";
 import { jalankanAction } from "@/lib/action-helpers";
 
 export function MateriActions({
@@ -43,7 +41,7 @@ export function MateriActions({
     try {
       const result = await jalankanAction(() =>
         kind === "proses"
-          ? analyzeMaterialAgainAction(materialId)
+          ? reanalyzeMaterialAction({ materialId })
           : publishMaterialAction(materialId),
       );
 

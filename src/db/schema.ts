@@ -208,11 +208,17 @@ export const materials = pgTable(
     sourceFileName: text("source_file_name"),
     aiAnalysis: jsonb("ai_analysis").$type<MaterialAnalysis>(),
     status: materialStatusEnum("status").notNull().default("draft"),
+    /**
+     * PRD 6.A: perubahan profil siswa menandai materi yang pernah terbit
+     * sebagai perlu ditinjau ulang. Guru diberi tahu lewat daftar materi.
+     */
+    needsReview: boolean("needs_review").notNull().default(false),
     createdAt: createdAt(),
   },
   (table) => [
     index("materials_teacher_idx").on(table.teacherId),
     index("materials_class_idx").on(table.classId),
+    index("materials_needs_review_idx").on(table.needsReview),
   ],
 );
 
@@ -230,6 +236,12 @@ export const materialAdaptations = pgTable(
       .references(() => students.id, { onDelete: "cascade" })
       .notNull(),
     status: adaptationStatusEnum("status").notNull().default("generating"),
+    /**
+     * PRD 6.D: regenerasi membuat versi baru dan tidak menghapus versi lama.
+     * Kolom ini yang membuat satu siswa bisa punya lebih dari satu versi
+     * untuk materi yang sama.
+     */
+    version: integer("version").notNull().default(1),
     adaptedContent: jsonb("adapted_content").$type<AdaptedContent>(),
     aiModel: text("ai_model"),
     aiPromptSnapshot: text("ai_prompt_snapshot"),
@@ -240,7 +252,11 @@ export const materialAdaptations = pgTable(
     createdAt: createdAt(),
   },
   (table) => [
-    uniqueIndex("material_adaptations_unique_idx").on(table.materialId, table.studentId),
+    uniqueIndex("material_adaptations_unique_idx").on(
+      table.materialId,
+      table.studentId,
+      table.version,
+    ),
     index("material_adaptations_student_idx").on(table.studentId),
     index("material_adaptations_status_idx").on(table.status),
   ],

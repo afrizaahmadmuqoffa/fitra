@@ -9,6 +9,11 @@ import {
   rejectAdaptationAction,
   saveAdaptationAction,
 } from "@/actions/materials";
+import {
+  generateVisualAction,
+  regenerateAdaptationAction,
+  removeVisualAction,
+} from "@/actions/ai";
 import { jalankanAction } from "@/lib/action-helpers";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -88,6 +93,8 @@ export function AdaptationEditor({
   initialAssets: VisualAsset[];
 }) {
   const router = useRouter();
+  const materialId = material.id;
+  const studentId = adaptation.studentId;
   const adaptationId = adaptation.id;
   const [sections, setSections] = React.useState<AdaptedSection[]>(
     adaptation.adaptedContent.sections,
@@ -149,22 +156,45 @@ export function AdaptationEditor({
       ),
     );
     setBusy(key);
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    setAssets((current) =>
-      current.map((asset) =>
-        asset.sectionIndex === sectionIndex
-          ? {
-              ...asset,
-              status: "ready",
-              imageUrl: `https://picsum.photos/seed/fitra-visual-${asset.id}-${Date.now()}/960/540`,
-            }
-          : asset,
-      ),
-    );
-    setBusy(null);
-    toast.success("Ilustrasi dibuat ulang", {
-      description: "Gambar baru menggantikan ilustrasi sebelumnya pada bagian ini.",
-    });
+    try {
+      const hasil = await jalankanAction(() =>
+        generateVisualAction({ adaptationId, sectionIndex }),
+      );
+      if (!hasil.ok) {
+        toast.error("Ilustrasi belum bisa dibuat", { description: hasil.message });
+        router.refresh();
+        return;
+      }
+      toast.success("Ilustrasi dibuat", {
+        description: "Gambar baru menggantikan ilustrasi sebelumnya pada bagian ini.",
+      });
+      router.refresh();
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function hapusVisual(sectionIndex: number) {
+    const asset = assetFor(sectionIndex);
+    if (!asset) return;
+
+    setBusy(`hapus-${sectionIndex}`);
+    try {
+      const hasil = await jalankanAction(() => removeVisualAction({ assetId: asset.id }));
+      if (!hasil.ok) {
+        toast.error("Ilustrasi belum bisa dihapus", { description: hasil.message });
+        return;
+      }
+      setSections((current) =>
+        current.map((section, i) =>
+          i === sectionIndex ? { ...section, media: [] } : section,
+        ),
+      );
+      toast.success("Ilustrasi dihapus dari bagian ini");
+      router.refresh();
+    } finally {
+      setBusy(null);
+    }
   }
 
   function replaceVisual(sectionIndex: number, file: File | undefined) {
@@ -180,14 +210,6 @@ export function AdaptationEditor({
     toast.success("Ilustrasi diganti", {
       description: `${file.name} sekarang dipakai pada bagian ini.`,
     });
-  }
-
-  function removeVisual(sectionIndex: number) {
-    setAssets((current) => current.filter((asset) => asset.sectionIndex !== sectionIndex));
-    setSections((current) =>
-      current.map((section, i) => (i === sectionIndex ? { ...section, media: [] } : section)),
-    );
-    toast.success("Ilustrasi dihapus dari bagian ini");
   }
 
   function updateAltText(sectionIndex: number, altText: string) {
@@ -206,19 +228,22 @@ export function AdaptationEditor({
   async function regenerateSection(sectionIndex: number) {
     const key = `regen-section-${sectionIndex}`;
     setBusy(key);
-    await new Promise((resolve) => setTimeout(resolve, 1600));
-    setEdits((current) => [
-      ...current,
-      {
-        at: new Date().toISOString(),
-        note: `Regenerasi bagian ${sectionIndex + 1} atas permintaan guru.`,
-        sectionIndex,
-      },
-    ]);
-    setBusy(null);
-    toast.success("Bagian dibuat ulang", {
-      description: "Versi sebelumnya tersimpan di riwayat revisi dan tidak dihapus.",
-    });
+    try {
+      const hasil = await jalankanAction(() =>
+        regenerateAdaptationAction({ materialId, studentId }),
+      );
+      if (!hasil.ok) {
+        toast.error("Regenerasi gagal", { description: hasil.message });
+        return;
+      }
+      toast.success("Versi baru dibuat", {
+        description:
+          "Versi ini menunggu review Anda. Versi sebelumnya tidak dihapus dan tetap tersimpan sebagai riwayat.",
+      });
+      router.refresh();
+    } finally {
+      setBusy(null);
+    }
   }
 
   async function approve() {
@@ -482,15 +507,10 @@ export function AdaptationEditor({
                 variant="outline"
                 className="mt-4"
                 disabled={busy !== null}
-                onClick={async () => {
-                  setBusy("regen-all");
-                  await new Promise((resolve) => setTimeout(resolve, 1600));
-                  setBusy(null);
-                  toast.success("Adaptasi dibuat ulang dari materi asli");
-                }}
+                onClick={() => regenerateSection(0)}
               >
                 <RefreshCw />
-                Buat ulang sekarang
+                Buat versi baru sekarang
               </Button>
             </Card>
           ) : (
@@ -673,7 +693,7 @@ export function AdaptationEditor({
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => removeVisual(sectionIndex)}
+                                  onClick={() => hapusVisual(sectionIndex)}
                                 >
                                   <Trash2 />
                                   Hapus

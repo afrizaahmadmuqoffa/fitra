@@ -30,6 +30,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { GenerateAdaptationButton } from "@/components/dashboard/materi/generate-adaptation-button";
 import { MateriActions } from "@/components/dashboard/materi/materi-actions";
 import { ArrowLeft, FileText, Info, Layers, Sparkles } from "lucide-react";
 import { LEVEL_LABELS } from "@/lib/constants";
@@ -299,23 +300,32 @@ export default async function MaterialDetailPage({
                           )}
                         </TableCell>
                         <TableCell className="text-right">
-                          {adaptation ? (
-                            <Button variant="outline" size="sm" asChild>
-                              <Link
-                                href={`/dashboard/materi/${material.id}/adaptasi/${student.id}`}
-                              >
-                                {adaptation.status === "generating"
-                                  ? "Lihat proses"
-                                  : adaptation.status === "approved"
-                                    ? "Tinjau"
-                                    : "Kurasi"}
-                              </Link>
-                            </Button>
-                          ) : (
-                            <Button variant="ghost" size="sm" disabled>
-                              Belum dibuat
-                            </Button>
-                          )}
+                          <div className="flex items-center justify-end gap-2">
+                            {adaptation ? (
+                              <Button variant="outline" size="sm" asChild>
+                                <Link
+                                  href={`/dashboard/materi/${material.id}/adaptasi/${student.id}`}
+                                >
+                                  {adaptation.status === "generating"
+                                    ? "Lihat proses"
+                                    : adaptation.status === "approved"
+                                      ? "Tinjau"
+                                      : "Kurasi"}
+                                </Link>
+                              </Button>
+                            ) : null}
+                            <GenerateAdaptationButton
+                              materialId={material.id}
+                              studentId={student.id}
+                              studentName={student.fullName}
+                              sudahAda={Boolean(adaptation)}
+                              disabledReason={
+                                profile
+                                  ? undefined
+                                  : "Profil belajar belum lengkap"
+                              }
+                            />
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
