@@ -157,7 +157,8 @@ const zBagianAi = z.object({
   body: z.array(z.string().min(1).max(600)).min(1).max(8),
   audioScript: z.string().min(10).max(1500),
   interactions: z.array(zInteraksiAi).max(3),
-  visualRequest: zPermintaanVisualAi.nullable(),
+  hasVisual: z.boolean(),
+  visualSpec: zPermintaanVisualAi.nullable(),
 });
 
 const zAdaptasiAi = z.object({
@@ -250,48 +251,47 @@ export const SKEMA_ADAPTASI: Record<string, unknown> = {
               required: ["kind", "prompt", "options", "acceptedAnswers"],
             },
           },
-          visualRequest: {
-            type: "anyOf",
+          hasVisual: {
+            type: "boolean",
+            description: "Apakah bagian ini butuh ilustrasi.",
+          },
+          visualSpec: {
+            type: "object",
+            nullable: true,
             description:
-              "Permintaan ilustrasi untuk bagian ini. Isi null bila bagian ini tidak butuh gambar.",
-            anyOf: [
-              {
-                type: "object",
-                properties: {
-                  subject: {
-                    type: "string",
-                    description: "Obyek utama yang digambar, konkret dan tunggal.",
-                  },
-                  scene: {
-                    type: "string",
-                    description:
-                      "Situasi lengkap yang memuat objek, jumlah, warna, dan latar belakang yang relevan.",
-                  },
-                  style: {
-                    type: "string",
-                    description:
-                      "Gaya ilustrasi, misalnya ilustrasi buku anak SDLB dengan warna cerah dan bentuk sederhana.",
-                  },
-                  safetyConstraints: {
-                    type: "string",
-                    description:
-                      "Batasan untuk gambar yang aman dilihat anak. Boleh kosong bila tidak ada.",
-                  },
-                  altText: {
-                    type: "string",
-                    description:
-                      "Deskripsi gambar untuk pembaca layar, satu-dua kalimat, menyebut objek dan jumlah.",
-                  },
-                },
-                required: [
-                  "subject",
-                  "scene",
-                  "style",
-                  "safetyConstraints",
-                  "altText",
-                ],
+              "Detail ilustrasi jika hasVisual true, null jika tidak butuh gambar.",
+            properties: {
+              subject: {
+                type: "string",
+                description: "Obyek utama yang digambar, konkret dan tunggal.",
               },
-              { type: "null" },
+              scene: {
+                type: "string",
+                description:
+                  "Situasi lengkap yang memuat objek, jumlah, warna, dan latar belakang yang relevan.",
+              },
+              style: {
+                type: "string",
+                description:
+                  "Gaya ilustrasi, misalnya ilustrasi buku anak SDLB dengan warna cerah dan bentuk sederhana.",
+              },
+              safetyConstraints: {
+                type: "string",
+                description:
+                  "Batasan untuk gambar yang aman dilihat anak. Boleh kosong bila tidak ada.",
+              },
+              altText: {
+                type: "string",
+                description:
+                  "Deskripsi gambar untuk pembaca layar, satu-dua kalimat, menyebut objek dan jumlah.",
+              },
+            },
+            required: [
+              "subject",
+              "scene",
+              "style",
+              "safetyConstraints",
+              "altText",
             ],
           },
         },
@@ -300,7 +300,8 @@ export const SKEMA_ADAPTASI: Record<string, unknown> = {
           "body",
           "audioScript",
           "interactions",
-          "visualRequest",
+          "hasVisual",
+          "visualSpec",
         ],
       },
     },
@@ -323,15 +324,15 @@ export function keAdaptedContent(
 
   const sections: AdaptedSection[] = hasil.sections.map((bagian, sectionIndex) => {
     const media: AdaptedMedia[] = [];
-    if (bagian.visualRequest) {
-      media.push({ assetId: null, altText: bagian.visualRequest.altText.trim() });
+    if (bagian.hasVisual && bagian.visualSpec) {
+      media.push({ assetId: null, altText: bagian.visualSpec.altText.trim() });
       requests.push({
         sectionIndex,
-        subject: bagian.visualRequest.subject.trim(),
-        scene: bagian.visualRequest.scene.trim(),
-        style: bagian.visualRequest.style.trim(),
-        safetyConstraints: bagian.visualRequest.safetyConstraints.trim(),
-        altText: bagian.visualRequest.altText.trim(),
+        subject: bagian.visualSpec.subject.trim(),
+        scene: bagian.visualSpec.scene.trim(),
+        style: bagian.visualSpec.style.trim(),
+        safetyConstraints: bagian.visualSpec.safetyConstraints.trim(),
+        altText: bagian.visualSpec.altText.trim(),
       });
     }
 
