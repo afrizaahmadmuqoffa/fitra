@@ -1,36 +1,70 @@
 import mammoth from "mammoth";
+import { debug } from "@/lib/ai/debug";
 
 /**
  * Ekstraksi teks dari berkas materi (PDF/DOCX/TXT).
- * PDF memakai pdfjs-dist legacy build yang berjalan di Node runtime.
+ *
+ * PDF memakai unpdf, yaitu redistribute serverless dari PDF.js. Alasan:
+ * PDF.js bawaan meminta berkas worker terpisah saat dijalankan di Vercel,
+ * dan berkas itu tidak ikut ter-bundle sehingga getDocument() menolak
+ * dengan "Setting up fake worker failed". unpdf menyematkan worker langsung
+ * ke dalam bundel dan sudah menyertakan polyfill yang dibutuhkan, jadi
+ * tidak ada berkas tambahan yang dicari saat runtime.
  */
-
 export const MAX_FILE_BYTES = 20 * 1024 * 1024;
 export const MAX_TEXT_LENGTH = 20_000;
 
+/** Batas waktu parsing PDF. unpdf berjalan di thread utama, jadi dijaga. */
+const PDF_TIMEOUT_MS = 60_000;
+
 export type ExtractionResult = { text: string; warning?: string };
 
-async function extractPdf(buffer: Buffer): Promise<string> {
-  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-  const document = await pdfjs.getDocument({
-    data: new Uint8Array(buffer),
-    useSystemFonts: false,
-    disableFontFace: true,
-  }).promise;
+function pesanBatasWaktu(): string {
+  const detik = Math.round(PDF_TIMEOUT_MS / 1000);
+  return `PDF terlalu besar atau rumit untuk diproses dalam ${detik} detik. Coba berkas lain, atau tempelkan teksnya secara manual.`;
+}
 
-  const pages: string[] = [];
-  for (let index = 1; index <= document.numPages; index += 1) {
-    const page = await document.getPage(index);
-    const content = await page.getTextContent();
-    const line = content.items
-      .map((item) => ("str" in item ? item.str : ""))
-      .join(" ")
-      .replace(/\s+/g, " ")
-      .trim();
-    if (line) pages.push(line);
-    page.cleanup();
+async function extractPdf(buffer: Buffer): Promise<string> {
+  const mulai = Date.now();
+  const { extractText, getDocumentProxy } = await import("unpdf");
+
+  const kerja = (async () => {
+    const proxy = await getDocumentProxy(new Uint8Array(buffer));
+    // mergePages membuat seluruh halaman menyatu jadi satu string.
+    const hasil = await extractText(proxy, { mergePages: true });
+    const teks: string = hasil.text;
+
+    debug.info("PDF berhasil diekstrak", {
+      halaman: hasil.totalPages,
+      ukuran_kb: Math.round(buffer.byteLength / 1024),
+      durasi_ms: Date.now() - mulai,
+      karakter: teks.length,
+    });
+
+    return teks;
+  })();
+
+  // unpdf mem-parsing di thread utama, jadi panggilan ini perlu dijaga agar
+  // satu berkas aneh tidak menahan Server Action sampai batas Vercel.
+  let tengah: ReturnType<typeof setTimeout> | null = null;
+  const penjaga = new Promise<never>((_, tolak) => {
+    tengah = setTimeout(() => tolak(new Error(pesanBatasWaktu())), PDF_TIMEOUT_MS);
+  });
+
+  try {
+    return await Promise.race([kerja, penjaga]);
+  } catch (error) {
+    debug.galat("ekstraksi PDF gagal", {
+      durasi_ms: Date.now() - mulai,
+      ukuran_kb: Math.round(buffer.byteLength / 1024),
+      pesan: debug.cuplik(
+        error instanceof Error ? error.message : String(error),
+      ),
+    });
+    throw error;
+  } finally {
+    if (tengah) clearTimeout(tengah);
   }
-  return pages.join("\n\n");
 }
 
 async function extractDocx(buffer: Buffer): Promise<string> {
