@@ -28,6 +28,7 @@ import {
   Volume2,
   X,
 } from "lucide-react";
+import { DragInteraction } from "./drag-interaction";
 import type {
   AdaptedInteraction,
   AdaptedSection,
@@ -163,8 +164,9 @@ export function AdaptivePlayer({
     jawaban: string;
     kunci: string;
   } | null>(null);
-  /** True once the browser reports word boundaries; disables the timer fallback. */
-  const [batasKataDipakai, setBatasKataDipakai] = React.useState(false);
+
+  const [scanEnabled, setScanEnabled] = React.useState(false);
+  const [scanIndex, setScanIndex] = React.useState(0);
 
   // Pencatatan sesi belajar (PRD 6.F dan 3.5). Sesi dibuka sekali saat materi
   // dibuka, setiap jawaban dicatat per bagian, lalu sesi ditutup saat siswa
@@ -223,8 +225,8 @@ export function AdaptivePlayer({
 
   /**
    * Speaks a script with the browser engine and follows its word boundary
-   * events, which is what PRD 6.G asks for. Falls back to a timer when the
-   * engine reports no boundaries, so the highlight still advances.
+   * events, which is what PRD 6.G asks for. Timer-based highlight runs
+   * continuously as baseline; boundary events override position when available.
    */
   function speak(target: Naskah) {
     const script = target === "soal" ? scriptSoal : scriptMateri;
@@ -236,22 +238,29 @@ export function AdaptivePlayer({
     setPaused(false);
 
     if (!bisaSuara) {
-      setBatasKataDipakai(false);
       return;
     }
 
     const synth = window.speechSynthesis;
     synth.cancel();
-    setBatasKataDipakai(false);
 
     const utter = new SpeechSynthesisUtterance(script);
     utter.lang = "id-ID";
     utter.rate = speed;
+    
+    let lastBoundaryTime = 0;
+    const boundaryDebounceMs = 50;
+    
     utter.onboundary = (event) => {
       if (event.name !== "word") return;
       if (typeof event.charIndex !== "number") return;
-      setBatasKataDipakai(true);
-      setWordIndex(Math.max(0, posisiDariCharIndex(script, event.charIndex)));
+      
+      const now = Date.now();
+      if (now - lastBoundaryTime < boundaryDebounceMs) return;
+      lastBoundaryTime = now;
+      
+      const position = posisiDariCharIndex(script, event.charIndex);
+      setWordIndex(Math.max(0, position));
     };
     utter.onend = () => {
       setPlaying(false);
@@ -309,10 +318,9 @@ export function AdaptivePlayer({
     speak(naskah);
   }
 
-  // Fallback pacing, active only when the engine gave no word boundaries.
+  // Timer-based highlight baseline. Always runs; boundary events override position.
   React.useEffect(() => {
     if (!playing || paused || !uiTokens.audioEnabled) return;
-    if (bisaSuara && batasKataDipakai) return;
     const interval = window.setInterval(() => {
       setWordIndex((current) => {
         if (current + 1 >= words.length) {
@@ -329,8 +337,6 @@ export function AdaptivePlayer({
     speed,
     words.length,
     uiTokens.audioEnabled,
-    batasKataDipakai,
-    bisaSuara,
   ]);
 
   // Never leave audio running when leaving the page.
@@ -341,6 +347,43 @@ export function AdaptivePlayer({
       }
     };
   }, []);
+
+  // Auto-scan options when switch mode enabled.
+  React.useEffect(() => {
+    if (!scanEnabled || !interaction) return;
+    if (answered) return;
+
+    const interval = window.setInterval(() => {
+      setScanIndex(
+        (current) => (current + 1) % interaction.options.length
+      );
+    }, 2000);
+
+    return () => window.clearInterval(interval);
+  }, [scanEnabled, interaction, answered]);
+
+  // Listen for switch activation (Space/Enter key).
+  React.useEffect(() => {
+    if (!scanEnabled || !interaction || answered) return;
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.code === "Space" || event.code === "Enter") {
+        event.preventDefault();
+        const option = interaction.options[scanIndex];
+        if (option) {
+          submitAnswer(option.label, option.correct);
+          setScanEnabled(false);
+        }
+      }
+      if (event.code === "Escape") {
+        event.preventDefault();
+        setScanEnabled(false);
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [scanEnabled, interaction, scanIndex, answered]);
 
   // Buka sesi belajar sekali saat materi dibuka (PRD 6.F).
   React.useEffect(() => {
@@ -405,7 +448,7 @@ export function AdaptivePlayer({
   function submitAnswer(
     response: string,
     correct: boolean,
-    interactionType = "touch",
+    interactionType: "touch" | "speech" | "text" | "drag" = "touch",
   ) {
     if (answered) return;
     setPerluKonfirmasi(null);
@@ -574,26 +617,38 @@ export function AdaptivePlayer({
                   </Button>
                 ) : null}
               </div>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {itemInteraction.options.map((option) => (
-                  <Button
-                    key={option.id}
-                    size="lg"
-                    className={TAP}
-                    variant={
-                      itemAnswer
-                        ? option.correct
-                          ? "default"
+
+              {itemInteraction.kind === "drag" && !itemAnswer ? (
+                <DragInteraction
+                  interaction={itemInteraction}
+                  onSubmit={(answer, correct) =>
+                    submitAnswer(answer, correct, "drag")
+                  }
+                  tapClassName={TAP}
+                />
+              ) : (
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {itemInteraction.options.map((option) => (
+                    <Button
+                      key={option.id}
+                      size="lg"
+                      className={TAP}
+                      variant={
+                        itemAnswer
+                          ? option.correct
+                            ? "default"
+                            : "outline"
                           : "outline"
-                        : "outline"
-                    }
-                    disabled={Boolean(itemAnswer)}
-                    onClick={() => submitAnswer(option.label, option.correct)}
-                  >
-                    {option.label}
-                  </Button>
-                ))}
-              </div>
+                      }
+                      disabled={Boolean(itemAnswer)}
+                      onClick={() => submitAnswer(option.label, option.correct)}
+                    >
+                      {option.label}
+                    </Button>
+                  ))}
+                </div>
+              )}
+
               {itemAnswer ? (
                 <p
                   className={cn(
@@ -798,10 +853,30 @@ export function AdaptivePlayer({
                 ) : null}
 
                 {modes.switch ? (
-                  <p className="rounded-lg bg-muted/60 px-3 py-2 text-sm text-muted-foreground">
-                    Kamu dapat memakai sakelar tunggal. Tekan pilihan di atas satu kali,
-                    lalu sakelar untuk mengonfirmasi jawaban.
-                  </p>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm text-muted-foreground">
+                        Mode sakelar: Tekan tombol saat pilihan yang kamu mau menyala.
+                      </p>
+                      <Button
+                        size="lg"
+                        className={TAP}
+                        variant={scanEnabled ? "default" : "outline"}
+                        onClick={() => {
+                          setScanEnabled(!scanEnabled);
+                          setScanIndex(0);
+                        }}
+                      >
+                        {scanEnabled ? "Hentikan pemindaian" : "Mulai pemindai"}
+                      </Button>
+                    </div>
+
+                    {scanEnabled && interaction && (
+                      <p className="text-sm font-medium text-primary">
+                        → {interaction.options[scanIndex]?.label}
+                      </p>
+                    )}
+                  </div>
                 ) : null}
               </CardContent>
             </Card>
