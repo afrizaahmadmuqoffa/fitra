@@ -259,6 +259,7 @@
    tergantung urutan muat modul. */
 .driver-popover.fitra-tour {
   all: initial !important;
+  z-index: 9999 !important;
   font-family: var(--font-sans) !important;
   box-sizing: border-box !important;
   color: var(--popover-foreground) !important;
