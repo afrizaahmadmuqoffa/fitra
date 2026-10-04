@@ -50,10 +50,10 @@ const zAnalisisAi = z.object({
     )
     .min(1, "Materi harus memiliki minimal satu bagian")
     .max(24, "Terlalu banyak bagian; kelompokkan materi yang mirip"),
-  sectionsNeedingVisual: z
-    .array(z.string().min(1).max(160))
+  visualSectionHints: z
+    .array(z.number().int().min(0))
     .max(24)
-    .describe("Judul bagian yang benar-benar butuh ilustrasi"),
+    .describe("Indeks bagian (0-based) yang mungkin butuh ilustrasi sebagai hint"),
 });
 
 export type AnalisisAi = z.infer<typeof zAnalisisAi>;
@@ -92,14 +92,14 @@ export const SKEMA_ANALISIS: Record<string, unknown> = {
         required: ["title", "summary", "keyTerms"],
       },
     },
-    sectionsNeedingVisual: {
+    visualSectionHints: {
       type: "array",
       description:
-        "Judul sub-bagian yang perlu ilustrasi. Kosongkan bila seluruh materi bisa dijelaskan tanpa gambar.",
-      items: { type: "string" },
+        "Indeks bagian (0-based) yang mungkin butuh ilustrasi. Ini hint untuk adaptasi, bukan keputusan final. Kosongkan bila seluruh materi bisa dijelaskan tanpa gambar.",
+      items: { type: "integer" },
     },
   },
-  required: ["summary", "estimatedReadingLevel", "structure", "sectionsNeedingVisual"],
+  required: ["summary", "estimatedReadingLevel", "structure", "visualSectionHints"],
 };
 
 /** Memetakan keluaran AI ke bentuk `MaterialAnalysis` milik database. */
@@ -110,20 +110,10 @@ export function keAnalisis(hasil: AnalisisAi, judulCadangan: string): MaterialAn
     keyTerms: item.keyTerms.map((kata) => kata.trim()).filter(Boolean),
   }));
 
-  const indeksButuhVisual = struktur
-    .map((item, index) =>
-      hasil.sectionsNeedingVisual.some((judul) =>
-        judul.trim().toLowerCase() === item.title.trim().toLowerCase(),
-      )
-        ? index
-        : -1,
-    )
-    .filter((index) => index >= 0);
-
   return {
     structure: struktur,
     estimatedReadingLevel: hasil.estimatedReadingLevel.trim(),
-    visualSections: indeksButuhVisual,
+    visualSections: hasil.visualSectionHints,
     summary: hasil.summary.trim(),
   };
 }

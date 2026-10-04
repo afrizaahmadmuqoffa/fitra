@@ -128,12 +128,27 @@ export async function createMaterialAction(input: {
 
     revalidatePath(`/dashboard/materi/${materialId}`);
 
-    const hasil = await analisisMateri({
-      judul: values.title.trim(),
-      mapel: values.subject?.trim() || "Umum",
-      teks: sourceText,
-      pakaiAi: true,
-    });
+    let hasil;
+    try {
+      hasil = await analisisMateri({
+        judul: values.title.trim(),
+        mapel: values.subject?.trim() || "Umum",
+        teks: sourceText,
+        pakaiAi: true,
+        allowFallback: false,
+      });
+    } catch (error) {
+      await withRlsDb(context.claims, async (tx) => {
+        await tx
+          .update(materials)
+          .set({ status: "draft" })
+          .where(eq(materials.id, materialId));
+      });
+      revalidatePath(`/dashboard/materi/${materialId}`);
+      
+      const pesan = error instanceof Error ? error.message : "Analisis AI gagal. Silakan coba lagi.";
+      return fail(pesan);
+    }
 
     const ringkasan =
       `${hasil.analysis.structure.length} bagian teridentifikasi` +

@@ -202,10 +202,12 @@ const ATURAN_HAMBATAN: Record<DisabilityType, string[]> = {
     "- Naskah audio menjadi jalur informasi utama dan harus berdiri sendiri.",
   ],
   tunarungu: [
-    "- Audio adalah jalur utama. Tulis naskah audio seperti guru berbicara langsung pada anak.",
-    "- Pakai kalimat pendek dengan jeda yang jelas.",
-    "- Ulangi kata kunci penting di akhir kalimat.",
-    "- Jangan bergantung pada warna atau posisi sebagai satu-satunya pembeda.",
+    "- Visual adalah jalur utama. Anak tidak dapat mendengar audio sama sekali.",
+    "- Semua informasi wajib ditulis di teks, jangan hanya di audio.",
+    "- Pakai kalimat pendek dan tanda baca yang jelas.",
+    "- Sertakan gambar atau ilustrasi untuk setiap konsep penting.",
+    "- Jangan bergantung pada audio untuk menyampaikan informasi apapun.",
+    "- Ulangi kata kunci penting di teks tertulis, bukan hanya di naskah audio.",
   ],
   tunagrahita: [
     "- Pakai contoh konkret dan angka nyata, bukan definisi.",
@@ -283,14 +285,14 @@ export function bangunPromptAnalisis(input: {
     "1. Ringkasan keseluruhan materi dalam 1 sampai 3 kalimat.",
     "2. Tingkat keterbacaan materi sumber. Pilih satu dari: Sangat sederhana, Sederhana, Sedang, Kompleks.",
     "3. Daftar sub-bagian materi. Tiap sub-bagian berisi judul, ringkasan, dan daftar konsep kunci.",
-    "4. Daftar judul sub-bagian yang benar-benar tidak bisa dipahami tanpa gambar.",
+    "4. Indeks sub-bagian yang mungkin butuh ilustrasi (hint untuk adaptasi, bukan keputusan final).",
     "",
-    "TENTANG DAFTAR BUTUH GAMBAR:",
-    "- Masukkan hanya kalau gambar menambah pemahaman.",
-    "- Materi penjelasan, definisi, atau aturan tidak butuh gambar.",
-    "- Perkara seperti jumlah, warna, bentuk, atau posisi benda butuh gambar.",
+    "TENTANG HINT GAMBAR:",
+    "- Masukkan indeks bagian (0, 1, 2, ...) jika gambar kemungkinan menambah pemahaman.",
+    "- Materi penjelasan, definisi, atau aturan biasanya tidak butuh gambar.",
+    "- Perkara seperti jumlah, warna, bentuk, atau posisi benda mungkin butuh gambar.",
     "- Kalau seluruh materi bisa dijelaskan dengan kata-kata saja, kirim daftar kosong.",
-    "- Tulis judul persis seperti yang tertulis pada daftar sub-bagian.",
+    "- Adaptasi AI akan memutuskan final berdasarkan profil siswa (tunanetra vs tunarungu beda kebutuhan visual).",
   ].join("\n");
 }
 
@@ -394,6 +396,18 @@ export function bangunPromptAdaptasi(input: {
 }): string {
   const batas = BATAS_KATA_KALIMAT[input.profil.tingkatAkademik];
 
+  const bagianDenganHintVisual =
+    input.analisis?.structure.map((bagian, idx) => {
+      const butuhGambar = input.analisis!.visualSections.includes(idx);
+      return (
+        `${idx + 1}. ${bagian.title} - ${bagian.summary}` +
+        (bagian.keyTerms.length > 0
+          ? ` Konsep kunci: ${bagian.keyTerms.join(", ")}.`
+          : "") +
+        (butuhGambar ? " [Bagian ini mungkin butuh gambar, pertimbangkan profil anak]" : "")
+      );
+    }) ?? [];
+
   return [
     "Tulis satu versi materi yang disesuaikan untuk satu anak berdasarkan materi sumber di bawah.",
     "",
@@ -409,13 +423,7 @@ export function bangunPromptAdaptasi(input: {
     ...(input.analisis
       ? [
           "ANALISIS STRUKTUR MATERI, pakai sebagai panduan memecah:",
-          ...input.analisis.structure.map(
-            (bagian, nomor) =>
-              `${nomor + 1}. ${bagian.title} - ${bagian.summary}` +
-              (bagian.keyTerms.length > 0
-                ? ` Konsep kunci: ${bagian.keyTerms.join(", ")}.`
-                : ""),
-          ),
+          ...bagianDenganHintVisual,
           "",
         ]
       : []),
@@ -429,7 +437,7 @@ export function bangunPromptAdaptasi(input: {
     "2. Tulis ulang penjelasan dengan tingkat bahasa anak ini.",
     "3. Tulis naskah audio untuk tiap bagian mengikuti aturan naskah audio.",
     "4. Tambahkan satu aktivitas singkat di bagian yang paling tepat, dan lengkapi daftar jawaban yang diterima dengan semua varyasi jawaban.",
-    "5. Ajukan permintaan gambar hanya untuk bagian yang benar-benar butuh.",
+    "5. Ajukan permintaan gambar hanya untuk bagian yang benar-benar butuh, sesuai preferensi belajar anak ini.",
     "6. Tulis catatan adaptasi yang menjelaskan apa yang diubah dan mengapa, agar guru bisa menilai dengan cepat.",
     "",
     "Ingat: hasil ini ditinjau guru sebelum dipakai siswa.",

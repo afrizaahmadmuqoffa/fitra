@@ -55,7 +55,8 @@ export const ADAPTATION_STATUS: Record<
   draft: { label: "Menunggu review", tone: "warning" },
   edited: { label: "Disunting guru", tone: "info" },
   approved: { label: "Disetujui", tone: "success" },
-  rejected: { label: "Ditolak", tone: "destructive" },
+  rejected: { label: "Ditolak guru", tone: "destructive" },
+  failed: { label: "Gagal dibuat", tone: "destructive" },
 };
 
 export const VISUAL_ASSET_STATUS: Record<

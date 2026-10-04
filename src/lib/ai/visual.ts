@@ -144,7 +144,11 @@ export async function buatVisual(opsi: OpsiBuatVisual): Promise<HasilVisual> {
     section: opsi.sectionIndex,
   });
 
-  const urlGambar = await mintaUrlGambar({ prompt, apiKey, width: opsi.width, height: opsi.height });
+  // Default 1024x768 (4:3) optimal untuk educational content
+  const width = opsi.width ?? 1024;
+  const height = opsi.height ?? 768;
+
+  const urlGambar = await mintaUrlGambar({ prompt, apiKey, width, height });
 
   debug.info("gambar diterima dari provider", {
     url: debug.cuplik(urlGambar),
@@ -197,8 +201,8 @@ export async function buatVisual(opsi: OpsiBuatVisual): Promise<HasilVisual> {
 async function mintaUrlGambar(input: {
   prompt: string;
   apiKey: string;
-  width?: number;
-  height?: number;
+  width: number;
+  height: number;
 }): Promise<string> {
   const url = `${DASAR}/v1/images/generations`;
   const badan = {
@@ -206,6 +210,8 @@ async function mintaUrlGambar(input: {
     prompt: input.prompt,
     response_format: "url" as const,
     n: 1,
+    width: input.width,
+    height: input.height,
   };
 
   let galatTerakhir: unknown = null;

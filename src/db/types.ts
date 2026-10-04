@@ -30,7 +30,8 @@ export type AdaptationStatus =
   | "draft"
   | "edited"
   | "approved"
-  | "rejected";
+  | "rejected"
+  | "failed";
 export type VisualAssetStatus =
   | "pending"
   | "generating"

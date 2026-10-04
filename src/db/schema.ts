@@ -71,6 +71,7 @@ export const adaptationStatusEnum = pgEnum("adaptation_status", [
   "edited",
   "approved",
   "rejected",
+  "failed",
 ]);
 
 /** =========================================================

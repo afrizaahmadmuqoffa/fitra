@@ -23,7 +23,7 @@ import {
   visualAssets,
   notifications,
 } from "@/db/schema";
-import type { MaterialAnalysis, StudentProfile } from "@/db/types";
+import type { MaterialAnalysis, StudentProfile, DisabilityType } from "@/db/types";
 import { analisisMateri } from "@/lib/ai/analisis";
 import { susunAdaptasi, susunPromptGambar } from "@/lib/ai/adaptasi";
 import { AiError } from "@/lib/ai/gemini";
@@ -129,12 +129,27 @@ export async function reanalyzeMaterialAction(input: unknown): Promise<HasilAksi
   });
   revalidatePath(`/dashboard/materi/${materialId}`);
 
-  const hasil = await analisisMateri({
-    judul: sumber.judul,
-    mapel: sumber.mapel ?? "Umum",
-    teks: sumber.teks,
-    pakaiAi: true,
-  });
+  let hasil;
+  try {
+    hasil = await analisisMateri({
+      judul: sumber.judul,
+      mapel: sumber.mapel ?? "Umum",
+      teks: sumber.teks,
+      pakaiAi: true,
+      allowFallback: false,
+    });
+  } catch (error) {
+    await withRlsDb(context.claims, async (tx) => {
+      await tx
+        .update(materials)
+        .set({ status: "draft" })
+        .where(eq(materials.id, materialId));
+    });
+    revalidatePath(`/dashboard/materi/${materialId}`);
+    
+    const pesan = error instanceof AiError ? error.message : "Analisis AI gagal. Silakan coba lagi.";
+    return gagal(pesan);
+  }
 
   await withRlsDb(context.claims, async (tx) => {
     await tx
@@ -174,6 +189,7 @@ type KonteksSiswa = {
   analisis: MaterialAnalysis | null;
   profil: StudentProfile;
   namaSiswa: string;
+  hambatan: DisabilityType;
   versiBerikutnya: number;
 };
 
@@ -245,6 +261,7 @@ async function susunVersiBaru(
       analisis: materi.analisis ?? null,
       profil: profil as unknown as StudentProfile,
       namaSiswa: siswa.nama,
+      hambatan: siswa.hambatan,
       versiBerikutnya: (versi?.nomor ?? 0) + 1,
     };
     return hasil;
@@ -286,14 +303,14 @@ async function susunVersiBaru(
       teks: data.teks,
       analisis: data.analisis,
       profil: data.profil,
-      jenisHambatan: "lainnya",
+      jenisHambatan: data.hambatan,
     });
   } catch (error) {
     catatGalat("susunVersiBaru", error);
     await withRlsDb(claims, async (tx) => {
       await tx
         .update(materialAdaptations)
-        .set({ status: "rejected" })
+        .set({ status: "failed" })
         .where(eq(materialAdaptations.id, baris.id));
     });
     revalidatePath(`/dashboard/materi/${materialId}/adaptasi`);

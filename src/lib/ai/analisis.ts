@@ -1,10 +1,9 @@
 /**
  * Analisis struktur materi.
  *
- * Jalur utama memakai Gemini. Bila Gemini gagal, analisis lokal dari
- * src/lib/material-analysis.ts dipakai sebagai cadangan supaya fitur tidak
- * pernah mati total. PRD 6.B meminta status kembali ke draft dengan pesan
- * error dan tombol coba lagi; pemanggil yang mengatur status itu.
+ * Jalur utama memakai Gemini. Bila Gemini gagal dan allowFallback=true,
+ * analisis lokal dipakai sebagai cadangan. Bila allowFallback=false (default),
+ * error diteruskan ke caller untuk proper error handling.
  */
 import { analyzeMaterialText } from "@/lib/material-analysis";
 import type { MaterialAnalysis } from "@/db/types";
@@ -17,13 +16,13 @@ export type HasilAnalisis = {
   analysis: MaterialAnalysis;
   /** True bila hasil came dari AI, false bila dari analisis lokal. */
   dariAi: boolean;
-  /** Alasan memakai cadangan, untuk ditampilkan ke guru. */
+  /** Catatan untuk guru, ditampilkan di notifikasi. */
   catatan: string;
 };
 
 /**
- * Menganalisis materi. Tidak pernah melempar error: kalau AI gagal, hasil
- * lokal dikembalikan beserta alasannya.
+ * Menganalisis materi. Throw error jika AI gagal dan allowFallback=false.
+ * Return fallback result jika allowFallback=true.
  */
 export async function analisisMateri(input: {
   judul: string;
@@ -31,6 +30,8 @@ export async function analisisMateri(input: {
   teks: string;
   /** Guru bisa mematikan AI lewat parameter ini. */
   pakaiAi: boolean;
+  /** Allow fallback ke analisis lokal jika AI gagal. Default: false. */
+  allowFallback?: boolean;
 }): Promise<HasilAnalisis> {
   if (!input.pakaiAi) {
     debug.info("analisis memakai metode lokal, AI dimatikan");
@@ -73,17 +74,23 @@ export async function analisisMateri(input: {
     const pesan =
       error instanceof AiError
         ? error.message
-        : "Analisis AI gagal sehingga dipakai metode lokal.";
+        : "Analisis AI gagal.";
 
-    debug.galat("analisis AI gagal, pakai metode lokal", {
+    debug.galat("analisis AI gagal", {
       kode: error instanceof AiError ? error.kode : "tidak-diketahui",
       pesan: debug.cuplik(pesan),
+      allow_fallback: input.allowFallback ?? false,
     });
 
-    return {
-      analysis: analyzeMaterialText(input.teks, input.judul),
-      dariAi: false,
-      catatan: pesan,
-    };
+    if (input.allowFallback) {
+      return {
+        analysis: analyzeMaterialText(input.teks, input.judul),
+        dariAi: false,
+        catatan: `${pesan} Menggunakan analisis lokal sebagai cadangan.`,
+      };
+    }
+
+    // Throw error untuk proper handling di caller
+    throw error;
   }
 }
