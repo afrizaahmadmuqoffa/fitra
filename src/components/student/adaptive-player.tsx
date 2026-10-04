@@ -248,6 +248,7 @@ export function AdaptivePlayer({
     utter.lang = "id-ID";
     utter.rate = speed;
     utter.onboundary = (event) => {
+      if (event.name !== "word") return;
       if (typeof event.charIndex !== "number") return;
       setBatasKataDipakai(true);
       setWordIndex(Math.max(0, posisiDariCharIndex(script, event.charIndex)));
@@ -310,7 +311,7 @@ export function AdaptivePlayer({
 
   // Fallback pacing, active only when the engine gave no word boundaries.
   React.useEffect(() => {
-    if (!playing || !uiTokens.audioEnabled) return;
+    if (!playing || paused || !uiTokens.audioEnabled) return;
     if (bisaSuara && batasKataDipakai) return;
     const interval = window.setInterval(() => {
       setWordIndex((current) => {
@@ -324,6 +325,7 @@ export function AdaptivePlayer({
     return () => window.clearInterval(interval);
   }, [
     playing,
+    paused,
     speed,
     words.length,
     uiTokens.audioEnabled,

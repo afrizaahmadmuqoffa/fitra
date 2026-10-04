@@ -24,6 +24,7 @@ import {
 } from "@/lib/constants";
 import { SlidersHorizontal } from "lucide-react";
 import type { StudentProfile } from "@/lib/dummy/types";
+import { StudentControls, type StudentOverrides } from "./student-controls";
 
 export type SimulatedProfile = {
   id: string;
@@ -99,11 +100,19 @@ export function StudentAdaptiveProvider({
     candidates[0]?.id ?? "",
   );
   const [simulation, setSimulation] = React.useState(false);
+  const [overrides, setOverrides] = React.useState<StudentOverrides>({});
 
   const simulationProfile =
     candidates.find((item) => item.id === simulationProfileId) ?? candidates[0] ?? null;
   const effective = simulation && simulationProfile ? simulationProfile : profile;
-  const tokens = effective.uiTokens;
+  
+  const tokens: StudentProfile["uiTokens"] = {
+    fontSize: overrides.fontSize ?? effective.uiTokens.fontSize,
+    contrastMode: overrides.contrastMode ?? effective.uiTokens.contrastMode,
+    audioEnabled: overrides.audioEnabled ?? effective.uiTokens.audioEnabled,
+    audioSpeed: overrides.audioSpeed ?? effective.uiTokens.audioSpeed,
+    navStyle: effective.uiTokens.navStyle,
+  };
 
   const value = React.useMemo(
     () => ({
@@ -128,6 +137,8 @@ export function StudentAdaptiveProvider({
       >
         {children}
       </div>
+
+      <StudentControls defaults={effective.uiTokens} onChange={setOverrides} />
 
       {candidates.length > 0 ? (
         <>

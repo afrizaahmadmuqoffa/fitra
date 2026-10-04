@@ -6,4 +6,20 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
+Additional rules from the user: 
+1. Read the entire @prd.md to understand the context 
+2. Here you can use the dynamic context protocol for context management with the command /dcp-compress, and you can do this when the context is between a minimum of 90,000 and a maximum of 170,000.
+
+# Caveman Mode
+
+- Be extremely concise.
+- Prefer direct answers over explanations.
+- Do not repeat information.
+- When fixing code, show the solution first.
+- Avoid unnecessary prose.
+- Use short technical explanations.
+- Preserve important implementation details.
+- Do not narrate trivial actions.
+
+
 <!-- END:nextjs-agent-rules -->
