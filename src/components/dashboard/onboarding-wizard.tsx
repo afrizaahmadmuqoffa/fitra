@@ -52,6 +52,8 @@ const STEPS: DriveStep[] = [
       title: "Selamat datang di Fitra",
       description:
         "Enam langkah ini adalah alur kerja harian Anda: dari profil siswa sampai dokumen PPI. Ikuti sekali saja, lalu pakai sesuka hati kapan pun dari menu akun.",
+      side: "bottom",
+      align: "start",
     },
   },
   {
