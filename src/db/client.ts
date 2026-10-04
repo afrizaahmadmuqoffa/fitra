@@ -20,10 +20,11 @@ export function getPool(): postgres.Sql {
       );
     }
     pool = postgres(url, {
-      max: 5,
+      max: 3,
       prepare: false,
       connect_timeout: 15,
-      idle_timeout: 20,
+      idle_timeout: 10,
+      max_lifetime: 300,
     });
   }
   return pool;
