@@ -204,7 +204,7 @@ export default async function DashboardPage() {
                 menerbitkan adaptasi ada di halaman Panduan.
               </p>
               <Button variant="link" size="sm" asChild className="mt-1 h-auto px-0">
-                <Link href="/panduan">Buka panduan</Link>
+                <Link href="/#panduan">Buka panduan</Link>
               </Button>
             </div>
           </CardContent>

@@ -74,8 +74,9 @@ export const mobileNav: NavItem[] = [
 
 export const publicNav: { label: string; href: string }[] = [
   { label: "Masalah", href: "/#masalah" },
-  { label: "Cara kerja", href: "/#cara-kerja" },
+  { label: "Solusi", href: "/#solusi" },
   { label: "Fitur", href: "/#fitur" },
-  { label: "Tentang", href: "/tentang" },
-  { label: "Panduan", href: "/panduan" },
+  { label: "Cara kerja", href: "/#cara-kerja" },
+  { label: "Tentang", href: "/#tentang" },
+  { label: "Panduan", href: "/#panduan" },
 ];

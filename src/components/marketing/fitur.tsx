@@ -160,7 +160,7 @@ export function CaraKerja() {
 
         <Reveal className="mt-8">
           <Link
-            href="/panduan"
+            href="/#panduan"
             className="inline-flex items-center gap-2 text-sm font-semibold text-primary transition-colors hover:text-primary/80"
           >
             Baca panduan lengkap untuk guru

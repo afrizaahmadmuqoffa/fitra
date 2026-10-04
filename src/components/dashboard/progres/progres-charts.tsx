@@ -337,7 +337,7 @@ export function ProgresCharts({
               Sesi diselesaikan
             </span>
             <Button variant="link" size="sm" asChild className="h-auto p-0">
-              <Link href="/panduan#progres-ppi">Cara membaca data progres</Link>
+              <Link href="/#panduan">Cara membaca data progres</Link>
             </Button>
           </div>
         </CardContent>

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useTheme } from "next-themes";
+import { useTheme, useThemeMounted } from "@/components/theme-provider";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -60,6 +60,7 @@ function initialsOf(name: string) {
 export function SettingsForm({ teacher }: { teacher: TeacherProfile }) {
   const router = useRouter();
   const { resolvedTheme, setTheme } = useTheme();
+  const themeMounted = useThemeMounted();
   const [notifications, setNotifications] = React.useState<Record<string, boolean>>({
     ai_done: true,
     review: true,
@@ -383,7 +384,15 @@ onValueChange={(value) => {
             <p className="text-sm font-semibold">Tampilan aplikasi</p>
             <ToggleGroup
               type="single"
-              value={resolvedTheme === "dark" ? "gelap" : resolvedTheme === "light" ? "terang" : "sistem"}
+              value={
+                !themeMounted
+                  ? "sistem"
+                  : resolvedTheme === "dark"
+                    ? "gelap"
+                    : resolvedTheme === "light"
+                      ? "terang"
+                      : "sistem"
+              }
               onValueChange={(value) => {
                 if (!value) return;
                 setTheme(value === "gelap" ? "dark" : value === "terang" ? "light" : "system");

@@ -23,7 +23,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Menu, Moon, Sun } from "lucide-react";
-import { useTheme } from "next-themes";
+import { useTheme, useThemeMounted } from "@/components/theme-provider";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { SignOutItem } from "@/components/layout/sign-out-item";
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
@@ -74,7 +74,8 @@ export function DashboardHeader({
   notifications: AppNotification[];
 }) {
   const crumbs = useBreadcrumbs();
-const { resolvedTheme, setTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
+  const themeMounted = useThemeMounted();
   const [open, setOpen] = React.useState(false);
   const initials = teacher.fullName
     .split(" ")
@@ -135,11 +136,21 @@ const { resolvedTheme, setTheme } = useTheme();
         variant="ghost"
         size="icon"
         aria-label={
-          resolvedTheme === "dark" ? "Beralih ke mode terang" : "Beralih ke mode gelap"
+          !themeMounted
+            ? "Ganti tema"
+            : resolvedTheme === "dark"
+              ? "Beralih ke mode terang"
+              : "Beralih ke mode gelap"
         }
         onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
       >
-        {resolvedTheme === "dark" ? <Sun /> : <Moon />}
+        {!themeMounted ? (
+          <span className="size-5" aria-hidden />
+        ) : resolvedTheme === "dark" ? (
+          <Sun />
+        ) : (
+          <Moon />
+        )}
       </Button>
 
       <DropdownMenu>
@@ -166,7 +177,7 @@ const { resolvedTheme, setTheme } = useTheme();
             <Link href="/dashboard/pengaturan">Pengaturan akun</Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link href="/panduan">Panduan penggunaan</Link>
+            <Link href="/#panduan">Panduan penggunaan</Link>
           </DropdownMenuItem>
 <DropdownMenuSeparator />
           <SignOutItem />

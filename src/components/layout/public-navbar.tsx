@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { Menu, Moon, Sun } from "lucide-react";
-import { useTheme } from "next-themes";
+import { useTheme, useThemeMounted } from "@/components/theme-provider";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { APP_NAME } from "@/lib/constants";
@@ -13,6 +13,7 @@ export function PublicNavbar() {
   const [scrolled, setScrolled] = React.useState(false);
   const [open, setOpen] = React.useState(false);
   const { resolvedTheme, setTheme } = useTheme();
+  const themeMounted = useThemeMounted();
 
   React.useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -23,13 +24,13 @@ export function PublicNavbar() {
 
   return (
     <header
-      className={`sticky top-0 z-50 h-[72px] border-b transition-colors duration-300 ${
+      className={`fixed inset-x-0 top-0 z-50 h-[72px] border-b transition-colors duration-300 ${
         scrolled
           ? "border-border bg-background/90 backdrop-blur-md"
-          : "border-transparent bg-background"
+          : "border-transparent bg-transparent"
       }`}
     >
-      <div className="mx-auto flex h-full max-w-[1400px] items-center gap-6 px-4 md:px-8">
+      <div className="relative mx-auto grid h-full max-w-[1400px] grid-cols-[1fr_auto_1fr] items-center px-4 md:px-8">
         <Link
           href="/"
           className="flex shrink-0 items-center gap-2.5 font-heading text-lg font-bold tracking-tight"
@@ -43,7 +44,7 @@ export function PublicNavbar() {
           {APP_NAME}
         </Link>
 
-        <nav aria-label="Navigasi utama" className="hidden flex-1 lg:block">
+        <nav aria-label="Navigasi utama" className="hidden lg:block">
           <ul className="flex items-center gap-1">
             {publicNav.map((item) => (
               <li key={item.href}>
@@ -58,16 +59,26 @@ export function PublicNavbar() {
           </ul>
         </nav>
 
-        <div className="ml-auto flex items-center gap-2 lg:ml-0">
+        <div className="flex items-center justify-end gap-2">
           <Button
             variant="ghost"
             size="icon"
             aria-label={
-              resolvedTheme === "dark" ? "Beralih ke mode terang" : "Beralih ke mode gelap"
+              !themeMounted
+                ? "Ganti tema"
+                : resolvedTheme === "dark"
+                  ? "Beralih ke mode terang"
+                  : "Beralih ke mode gelap"
             }
             onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
           >
-            {resolvedTheme === "dark" ? <Sun /> : <Moon />}
+            {!themeMounted ? (
+              <span className="size-5" aria-hidden />
+            ) : resolvedTheme === "dark" ? (
+              <Sun />
+            ) : (
+              <Moon />
+            )}
           </Button>
           <Button asChild variant="ghost" className="hidden sm:inline-flex">
             <Link href="/masuk">Masuk</Link>

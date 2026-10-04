@@ -531,7 +531,7 @@ export function PpiForm({
       </div>
 
       <p className="text-xs text-muted-foreground">
-        <Link href="/panduan#progres-ppi" className="underline underline-offset-4">
+        <Link href="/#panduan" className="underline underline-offset-4">
           Baca panduan penyusunan PPI
         </Link>{" "}
         bila Anda belum pernah menyusun dokumen ini.

@@ -1,7 +1,9 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import type { ReactNode } from "react";
 import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import { Providers } from "@/components/providers";
+import { themeInitScript } from "@/components/theme-provider";
 import "./globals.css";
 
 const inter = Inter({
@@ -58,6 +60,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       className={`${inter.variable} ${plusJakarta.variable} antialiased`}
     >
       <body className="flex min-h-[100dvh] flex-col">
+        <Script id="fitra-theme-init" strategy="beforeInteractive">
+          {themeInitScript}
+        </Script>
         <a href="#konten-utama" className="skip-link">
           Lewati ke konten utama
         </a>

@@ -7,23 +7,17 @@ const columns = [
     links: [
       { label: "Fitur", href: "/#fitur" },
       { label: "Cara kerja", href: "/#cara-kerja" },
-      { label: "Panduan Guru", href: "/panduan" },
+      { label: "Solusi", href: "/#solusi" },
+      { label: "Panduan Guru", href: "/#panduan" },
     ],
   },
   {
     heading: "Perusahaan",
-    links: [
-      { label: "Tentang Fitra", href: "/tentang" },
-      { label: "Misi inklusif", href: "/tentang#misi" },
-      { label: "Tim", href: "/tentang#tim" },
-    ],
+    links: [{ label: "Tentang Fitra", href: "/#tentang" }],
   },
   {
     heading: "Mulai",
-    links: [
-      { label: "Daftar gratis", href: "/masuk" },
-      { label: "Masuk", href: "/masuk" },
-    ],
+    links: [{ label: "Daftar gratis", href: "/masuk" }],
   },
 ];
 

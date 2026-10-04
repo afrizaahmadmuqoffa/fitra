@@ -928,7 +928,7 @@ export function StudentWizard({
         <p className="text-xs text-muted-foreground">
           Sumber data utama ada di{" "}
           <Link
-            href="/panduan#peta-profil"
+            href="/#panduan"
             className="underline underline-offset-4"
           >
             panduan pemetaan profil

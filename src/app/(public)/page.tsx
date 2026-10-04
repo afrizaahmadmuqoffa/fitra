@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
-import { Hero, HeroProofStrip } from "@/components/marketing/hero";
+import { Hero } from "@/components/marketing/hero";
 import { Masalah } from "@/components/marketing/masalah";
 import { Solusi } from "@/components/marketing/solusi";
 import { CaraKerja, Fitur } from "@/components/marketing/fitur";
-import { CtaDaftar, Testimoni } from "@/components/marketing/testimoni";
+import { TentangSection } from "@/components/marketing/tentang-section";
+import { PanduanSection } from "@/components/marketing/panduan-section";
+import { CtaDaftar } from "@/components/marketing/testimoni";
 
 export const metadata: Metadata = {
   title: "Satu Materi, Banyak Cara Belajar",
@@ -37,12 +39,12 @@ export default function LandingPage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
       />
       <Hero />
-      <HeroProofStrip />
       <Masalah />
       <Solusi />
       <Fitur />
       <CaraKerja />
-      <Testimoni />
+      <TentangSection />
+      <PanduanSection />
       <CtaDaftar />
     </>
   );

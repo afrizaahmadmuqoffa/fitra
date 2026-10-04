@@ -376,7 +376,7 @@ export function MasukClient({
       <p className="mt-6 text-sm text-muted-foreground">
         Belum punya akun?{" "}
         <Link
-          href="/panduan"
+          href="/#panduan"
           className="font-medium text-primary underline-offset-4 hover:underline"
         >
           Lihat panduan terlebih dahulu

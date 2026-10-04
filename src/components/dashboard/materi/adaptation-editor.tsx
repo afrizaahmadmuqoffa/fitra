@@ -150,6 +150,7 @@ export function AdaptationEditor({
 
   async function regenerateVisual(sectionIndex: number) {
     const key = `regen-${sectionIndex}`;
+    const sebelumnya = assetFor(sectionIndex)?.status;
     setAssets((current) =>
       current.map((asset) =>
         asset.sectionIndex === sectionIndex ? { ...asset, status: "generating" } : asset,
@@ -166,7 +167,10 @@ export function AdaptationEditor({
         return;
       }
       toast.success("Ilustrasi dibuat", {
-        description: "Gambar baru menggantikan ilustrasi sebelumnya pada bagian ini.",
+        description:
+          sebelumnya === "pending"
+            ? `Gambar baru dipakai pada bagian ini untuk siswa ${student.nickname}.`
+            : "Gambar baru menggantikan ilustrasi sebelumnya pada bagian ini.",
       });
       router.refresh();
     } finally {
@@ -636,8 +640,8 @@ export function AdaptationEditor({
                                     ? "Ilustrasi gagal dibuat. Buat ulang atau unggah gambar sendiri."
                                     : asset.status === "rejected"
                                       ? "Ilustrasi ditolak. Klik tombol di bawah untuk buat ulang."
-                                      : asset.status === "pending"
-                                        ? "Ilustrasi belum dibuat. Klik 'Buat ulang ilustrasi' di bawah untuk membuatnya."
+                                    : asset.status === "pending"
+                                      ? "Ilustrasi belum dibuat. Tekan 'Buat ilustrasi' di bawah untuk meminta gambar ke AI."
                                         : asset.status === "generating"
                                           ? "AI sedang membuat ilustrasi..."
                                           : "Menunggu ilustrasi"}
@@ -665,21 +669,31 @@ export function AdaptationEditor({
                               </p>
                             </div>
 
+                            <div className="no-print flex flex-wrap gap-2">
+                              <Button
+                                variant={asset.status === "pending" ? "default" : "outline"}
+                                size="sm"
+                                disabled={busy !== null || asset.status === "generating"}
+                                onClick={() => regenerateVisual(sectionIndex)}
+                              >
+                                {busy === `regen-${sectionIndex}` ||
+                                asset.status === "generating" ? (
+                                  <Loader2 className="animate-spin" />
+                                ) : asset.status === "pending" ? (
+                                  <Sparkles />
+                                ) : (
+                                  <RefreshCw />
+                                )}
+                                {busy === `regen-${sectionIndex}` || asset.status === "generating"
+                                  ? "Sedang dibuat..."
+                                  : asset.status === "pending"
+                                    ? "Buat ilustrasi"
+                                    : "Buat ulang ilustrasi"}
+                              </Button>
+                            </div>
+
                             {editing ? (
                               <div className="no-print flex flex-wrap gap-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  disabled={busy !== null}
-                                  onClick={() => regenerateVisual(sectionIndex)}
-                                >
-                                  {busy === `regen-${sectionIndex}` ? (
-                                    <Loader2 className="animate-spin" />
-                                  ) : (
-                                    <RefreshCw />
-                                  )}
-                                  Buat ulang ilustrasi
-                                </Button>
                                 <Label
                                   htmlFor={`upload-${sectionIndex}`}
                                   className="inline-flex h-7 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-border bg-background px-2.5 text-[0.8rem] font-medium transition-colors hover:bg-muted focus-within:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"

@@ -193,10 +193,14 @@
     scroll-behavior: smooth;
   }
 
-  /* Anchor targets must clear the sticky navbar */
+  /* Anchor targets must clear the fixed navbar */
   section[id],
   div[id] {
     scroll-margin-top: 88px;
+  }
+
+  html {
+    scroll-padding-top: 88px;
   }
 
   :focus-visible {
@@ -226,8 +230,7 @@
 }
 
 /* Print: PPI preview and QR batch sheets */
-@media print {
-  .no-print {
+@media print {  .no-print {
     display: none !important;
   }
 
@@ -239,5 +242,14 @@
   @page {
     size: A4;
     margin: 18mm 16mm;
+  }
+}
+
+@keyframes orbit {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
   }
 }

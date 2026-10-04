@@ -114,7 +114,7 @@ onClick={markAllRead}
             Tandai dibaca
           </Button>
         </div>
-        <ScrollArea className="max-h-96">
+        <ScrollArea className="h-96">
           {items.length === 0 ? (
             <p className="px-4 py-10 text-center text-sm text-muted-foreground">
               Belum ada notifikasi. Notifikasi materi, review, dan sesi siswa
@@ -147,7 +147,7 @@ onClick={markAllRead}
                             </Badge>
                           )}
                         </span>
-                        <span className="mt-1 block text-sm text-muted-foreground">
+                        <span className="mt-1 block text-sm text-muted-foreground line-clamp-2">
                           {item.body}
                         </span>
                         <span className="mt-1.5 block text-xs text-muted-foreground">
