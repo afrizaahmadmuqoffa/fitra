@@ -634,7 +634,13 @@ export function AdaptationEditor({
                                 <span>
                                   {asset.status === "failed"
                                     ? "Ilustrasi gagal dibuat. Buat ulang atau unggah gambar sendiri."
-                                    : "AI sedang membuat ilustrasi"}
+                                    : asset.status === "rejected"
+                                      ? "Ilustrasi ditolak. Klik tombol di bawah untuk buat ulang."
+                                      : asset.status === "pending"
+                                        ? "Ilustrasi belum dibuat. Klik 'Buat ulang ilustrasi' di bawah untuk membuatnya."
+                                        : asset.status === "generating"
+                                          ? "AI sedang membuat ilustrasi..."
+                                          : "Menunggu ilustrasi"}
                                 </span>
                               )}
                             </div>
