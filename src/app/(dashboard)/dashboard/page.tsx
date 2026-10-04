@@ -58,6 +58,7 @@ export default async function DashboardPage() {
       <OnboardingWizard show={!teacher.onboardingCompleted} />
       <PageHeader
         title={`Halo, Bu ${teacher.nickname.split(" ")[0]}`}
+        titleProps={{ "data-tour": "dashboard-title" } as React.HTMLAttributes<HTMLHeadingElement>}
         description="Ringkasan kelas Anda hari ini: siapa yang belajar, materi apa yang sudah terbit, dan apa yang masih perlu Anda periksa."
         actions={
           <>

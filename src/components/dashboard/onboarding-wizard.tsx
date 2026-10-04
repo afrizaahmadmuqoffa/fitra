@@ -47,6 +47,7 @@ function target(selector: string): () => Element {
 
 const STEPS: DriveStep[] = [
   {
+    element: target("[data-tour='dashboard-title']"),
     popover: {
       title: "Selamat datang di Fitra",
       description:
@@ -125,9 +126,6 @@ export function OnboardingWizard({ show }: { show: boolean }) {
         duration: 320,
         smoothScroll: true,
         allowClose: true,
-        overlayClickBehavior: "close",
-        // driver.js mengisi warna overlay lewat inline style, jadi tidak bisa
-        // di-override dari CSS. Nilai ini harus terbaca di tema terang dan gelap.
         overlayColor: "rgb(9 9 11 / 0.72)",
         overlayOpacity: 1,
         skipMissingElement: true,
