@@ -47,11 +47,20 @@ import {
 } from "lucide-react";
 import type { ClassRoom, Student } from "@/db/types";
 import { createMaterialAction } from "@/actions/materials";
+import {
+  createUploadTicketAction,
+  discardUploadedFileAction,
+} from "@/actions/storage";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { jalankanAction } from "@/lib/action-helpers";
 
 const MAX_SIZE = 20 * 1024 * 1024;
 const MAX_TEXT = 20000;
 const ALLOWED = [".pdf", ".docx", ".txt"];
+const BUCKET_MATERI = "materials";
+
+/** Tahap yang sedang berjalan, dipakai untuk pesan progres yang jujur. */
+type Tahap = "idle" | "tiket" | "unggah" | "analisis";
 
 function formatSize(bytes: number) {
   if (bytes < 1024) return `${bytes} byte`;
@@ -82,6 +91,7 @@ export function MateriUploadForm({
   const [fileError, setFileError] = React.useState<string | null>(null);
   const [dragOver, setDragOver] = React.useState(false);
   const [running, setRunning] = React.useState(false);
+  const [tahap, setTahap] = React.useState<Tahap>("idle");
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   const form = useForm<MaterialUploadInput>({
@@ -137,10 +147,61 @@ export function MateriUploadForm({
       toast.error("Tempelkan teks materi minimal 20 karakter");
       return;
     }
-setRunning(true);
+
+    setRunning(true);
+    let storagePath: string | null = null;
+
     try {
       const targetStudentIds = targetStudentsWatch;
+      let sourceType: "pdf" | "docx" | "text" | null = null;
+      let sourceFileName: string | null = null;
 
+      if (mode === "file" && file) {
+        // Tahap 1: minta tiket. Bucket dan tipe dicek di server.
+        setTahap("tiket");
+        const tiket = await jalankanAction(() =>
+          createUploadTicketAction({
+            fileName: file.name,
+            sizeBytes: file.size,
+          }),
+        );
+
+        if (!tiket.ok || !tiket.tiket || !tiket.contentType) {
+          toast.error("Materi belum tersimpan", { description: tiket.message });
+          return;
+        }
+
+        // Tahap 2: unggah langsung ke Supabase. Berkas tidak melewati Vercel,
+        // jadi batas 1 MB pada Server Action tidak berlaku di sini.
+        setTahap("unggah");
+        const browser = createSupabaseBrowserClient();
+        const { error: galatUnggah } = await browser.storage
+          .from(BUCKET_MATERI)
+          .uploadToSignedUrl(
+            tiket.tiket.path,
+            tiket.tiket.token,
+            file,
+            { contentType: tiket.contentType, upsert: false },
+          );
+
+        if (galatUnggah) {
+          toast.error("Berkas gagal diunggah", {
+            description: `${galatUnggah.message} Silakan coba lagi.`,
+          });
+          return;
+        }
+
+        storagePath = tiket.tiket.path;
+        sourceFileName = file.name;
+        sourceType = file.name.toLowerCase().endsWith(".pdf")
+          ? "pdf"
+          : file.name.toLowerCase().endsWith(".docx")
+            ? "docx"
+            : "text";
+      }
+
+      // Tahap 3: simpan metadata, lalu AI menganalisis strukturnya.
+      setTahap("analisis");
       const result = await jalankanAction(() =>
         createMaterialAction({
           values: {
@@ -150,11 +211,18 @@ setRunning(true);
             text: values.sourceText ?? "",
             targetStudentIds,
           },
-          file: mode === "file" ? file : null,
+          storagePath,
+          sourceFileName,
+          sourceType,
         }),
       );
 
       if (!result.ok) {
+        // Berkas sudah ada di storage tapi tidak terpakai. Buang supaya
+        // kuota guru tidak tergerus.
+        if (storagePath) {
+          await jalankanAction(() => discardUploadedFileAction({ path: storagePath }));
+        }
         toast.error("Materi belum tersimpan", { description: result.message });
         return;
       }
@@ -162,13 +230,14 @@ setRunning(true);
       toast.success(result.message, {
         description:
           targetStudentIds.length > 0
-            ? `${targetStudentIds.length} siswa masuk antrean adaptasi. Versi adaptasi akan lahir sebagai draft dan perlu Anda setujui.`
-            : "Struktur materi sudah dianalisis. Pilih kelas atau siswa target bila ingin materi langsung diadaptasi.",
+            ? `${targetStudentIds.length} siswa masuk antrean adaptasi. Tekan Buat adaptasi untuk menyusun versi personal masing-masing.`
+            : "Pilih kelas atau siswa target bila ingin materi langsung diadaptasi.",
       });
-      router.push("/dashboard/materi");
+      router.push(`/dashboard/materi/${result.materialId}`);
       router.refresh();
     } finally {
       setRunning(false);
+      setTahap("idle");
     }
   }
 
@@ -451,7 +520,11 @@ setRunning(true);
             {running ? (
               <>
                 <Loader2 className="animate-spin" />
-                Memproses
+                {tahap === "tiket"
+                  ? "Menyiapkan unggahan"
+                  : tahap === "unggah"
+                    ? "Mengunggah berkas"
+                    : "Menganalisis materi"}
               </>
             ) : (
               <>

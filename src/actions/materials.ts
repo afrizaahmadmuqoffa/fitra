@@ -4,14 +4,15 @@ import { revalidatePath } from "next/cache";
 import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { requireAuthContext } from "@/lib/auth";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { withRlsDb } from "@/db/rls";
 import {
   materialAdaptations,
   materials,
   notifications,
 } from "@/db/schema";
-import { analyzeMaterialText } from "@/lib/material-analysis";
+import { analisisMateri } from "@/lib/ai/analisis";
+import { debug } from "@/lib/ai/debug";
+import { createSupabaseServiceClient } from "@/lib/supabase/service";
 import { extractMaterialText, MAX_TEXT_LENGTH } from "@/lib/material-extract";
 import type { AdaptedContent } from "@/db/types";
 import type { ActionResult } from "./auth";
@@ -30,52 +31,59 @@ const materialInputSchema = z.object({
   targetStudentIds: z.array(z.string().uuid()).max(60).default([]),
 });
 
-/** Unggah materi: simpan berkas ke bucket privat, ekstraksi teks, analisis struktur. */
+/**
+ * Simpan materi baru.
+ *
+ * Berkas TIDAK lagi dikirim sebagai bagian Server Action karena request
+ * Server Action dibatasi 1 MB, sedangkan PRD memperbolehkan 20 MB. Alurnya:
+ * peramban lebih dulu meminta tiket, mengunggah langsung ke Supabase
+ * Storage, lalu memanggil aksi ini dengan `storagePath`. Server mengunduh
+ * berkasnya kembali untuk ekstraksi teks.
+ */
 export async function createMaterialAction(input: {
   values: unknown;
-  file?: File | null;
+  storagePath?: string | null;
+  sourceFileName?: string | null;
+  sourceType?: "pdf" | "docx" | "text" | null;
 }): Promise<ActionResult & { materialId?: string }> {
   const parsed = materialInputSchema.safeParse(input.values);
   if (!parsed.success) {
     return fail(parsed.error.issues[0]?.message ?? "Data materi belum lengkap.");
   }
   const values = parsed.data;
-  const file = input.file ?? null;
+  const storagePath = input.storagePath ?? null;
+  const sourceFileName = input.sourceFileName ?? null;
+
+  const storagePathInput = z
+    .string()
+    .min(10, "Jalur berkas tidak valid.")
+    .max(300)
+    .optional()
+    .nullable();
+
+  const parsedPath = storagePathInput.safeParse(storagePath);
+  if (!parsedPath.success) {
+    return fail("Jalur berkas tidak valid.");
+  }
 
   try {
     let sourceText = "";
-    let sourceType: "pdf" | "docx" | "text" = "text";
+    const sourceType: "pdf" | "docx" | "text" = input.sourceType ?? "text";
     let sourceUrl: string | null = null;
-    let sourceFileName: string | null = null;
     const warnings: string[] = [];
 
-    if (file) {
-      const extension = file.name.split(".").pop()?.toLowerCase();
-      if (extension === "pdf" || file.type === "application/pdf") {
-        sourceType = "pdf";
-      } else if (extension === "docx") {
-        sourceType = "docx";
-      } else if (extension === "txt" || file.type.startsWith("text/")) {
-        sourceType = "text";
-      } else {
-        return fail("Format berkas harus PDF, DOCX, atau TXT.");
+    if (storagePath) {
+      const unduhan = await unduhBahan(storagePath);
+      if (!unduhan) {
+        return fail(
+          "Berkas tidak ditemukan di penyimpanan. Silakan unggah ulang materinya.",
+        );
       }
 
-      const extraction = await extractMaterialText(file);
-      sourceText = extraction.text;
-      if (extraction.warning) warnings.push(extraction.warning);
-
-      const supabase = await createSupabaseServerClient();
-      const path = `materi/${crypto.randomUUID()}-${file.name.replace(/[^\w.\-]/g, "_")}`;
-      const { error: uploadError } = await supabase.storage
-        .from("materials")
-        .upload(path, file, { contentType: file.type || "application/octet-stream", upsert: false });
-      if (uploadError) {
-        warnings.push(`Berkas belum tersimpan di storage: ${uploadError.message}`);
-      } else {
-        sourceUrl = path;
-        sourceFileName = file.name;
-      }
+      const ekstraksi = await ekstrakDariByte(unduhan.byte, unduhan.nama);
+      sourceText = ekstraksi.text;
+      if (ekstraksi.warning) warnings.push(ekstraksi.warning);
+      sourceUrl = storagePath;
     } else {
       sourceText = String(
         (input.values as { text?: unknown } | undefined)?.text ?? "",
@@ -89,9 +97,11 @@ export async function createMaterialAction(input: {
       );
     }
 
-    const analysis = analyzeMaterialText(sourceText, values.title);
-
+    // PRD 6B: status awal draft, lalu pending_ai saat analisis berjalan,
+    // lalu ai_ready. Kegagalan dikembalikan ke draft supaya tombol coba
+    // lagi muncul.
     const context = await requireAuthContext();
+
     const materialId = await withRlsDb(context.claims, async (tx) => {
       const [row] = await tx
         .insert(materials)
@@ -104,31 +114,68 @@ export async function createMaterialAction(input: {
           sourceUrl,
           sourceFileName,
           sourceText,
-          aiAnalysis: analysis,
-          status: "ai_ready",
+          status: "draft",
         })
         .returning({ id: materials.id });
 
+      await tx
+        .update(materials)
+        .set({ status: "pending_ai" })
+        .where(eq(materials.id, row.id));
+
+      return row.id;
+    });
+
+    revalidatePath(`/dashboard/materi/${materialId}`);
+
+    const hasil = await analisisMateri({
+      judul: values.title.trim(),
+      mapel: values.subject?.trim() || "Umum",
+      teks: sourceText,
+      pakaiAi: true,
+    });
+
+    const ringkasan =
+      `${hasil.analysis.structure.length} bagian teridentifikasi` +
+      (hasil.analysis.visualSections.length > 0
+        ? `, ${hasil.analysis.visualSections.length} bagian butuh ilustrasi`
+        : "") +
+      ".";
+
+    await withRlsDb(context.claims, async (tx) => {
+      await tx
+        .update(materials)
+        .set({
+          aiAnalysis: hasil.analysis,
+          status: "ai_ready",
+        })
+        .where(eq(materials.id, materialId));
+
       if (values.targetStudentIds.length > 0) {
-        await tx.insert(materialAdaptations).values(
-          values.targetStudentIds.map((studentId) => ({
-            materialId: row.id,
-            studentId,
-            status: "generating" as const,
-            aiModel: "analisis-struktur-lokal",
-          })),
-        );
+        await tx
+          .insert(materialAdaptations)
+          .values(
+            values.targetStudentIds.map((studentId) => ({
+              materialId,
+              studentId,
+              status: "generating" as const,
+              aiModel: "menunggu versi pertama",
+            })),
+          )
+          .onConflictDoNothing();
       }
 
       await tx.insert(notifications).values({
         userId: context.userId,
         title: `Materi "${values.title.trim()}" selesai dianalisis`,
-        body: `${analysis.structure.length} bagian teridentifikasi dengan tingkat keterbacaan ${analysis.estimatedReadingLevel.toLowerCase()}.${values.targetStudentIds.length > 0 ? ` ${values.targetStudentIds.length} siswa masuk antrean adaptasi.` : ""}`,
+        body: `${ringkasan} ${hasil.catatan} ${
+          values.targetStudentIds.length > 0
+            ? `${values.targetStudentIds.length} siswa masuk antrean adaptasi.`
+            : ""
+        }`,
         type: "ai_done",
-        link: `/dashboard/materi/${row.id}`,
+        link: `/dashboard/materi/${materialId}`,
       });
-
-      return row.id;
     });
 
     revalidatePath("/dashboard/materi");
@@ -139,7 +186,7 @@ export async function createMaterialAction(input: {
     return {
       ok: true,
       materialId,
-      message: `${values.title.trim()} tersimpan dan struktur materinya sudah dianalisis.${warning}`,
+      message: `${values.title.trim()} tersimpan. Struktur materi: ${ringkasan}${warning}`,
     };
   } catch (error) {
     return fail(
@@ -148,46 +195,57 @@ export async function createMaterialAction(input: {
   }
 }
 
-/** Analisis ulang struktur materi (dipakai tombol "Proses ulang"). */
-export async function analyzeMaterialAgainAction(
-  materialId: string,
-): Promise<ActionResult> {
-  try {
-    const context = await requireAuthContext();
-    await withRlsDb(context.claims, async (tx) => {
-      const [row] = await tx
-        .select()
-        .from(materials)
-        .where(eq(materials.id, materialId))
-        .limit(1);
-      if (!row) throw new Error("Materi tidak ditemukan.");
+/** Unduh satu berkas dari bucket materi memakai service role. */
+async function unduhBahan(
+  storagePath: string,
+): Promise<{ byte: Uint8Array; nama: string } | null> {
+  const supabase = createSupabaseServiceClient();
+  const { data, error } = await supabase.storage
+    .from("materials")
+    .download(storagePath);
 
-      const analysis = analyzeMaterialText(
-        row.sourceText ?? "",
-        row.title,
-      );
-      await tx
-        .update(materials)
-        .set({ aiAnalysis: analysis, status: "ai_ready" })
-        .where(eq(materials.id, materialId));
-
-      await tx.insert(notifications).values({
-        userId: context.userId,
-        title: `Analisis "${row.title}" selesai`,
-        body: `${analysis.structure.length} bagian teridentifikasi dengan tingkat keterbacaan ${analysis.estimatedReadingLevel.toLowerCase()}.`,
-        type: "ai_done",
-        link: `/dashboard/materi/${materialId}`,
-      });
+  if (error || !data) {
+    debug.galat("berkas materi gagal diunduh", {
+      jalur: storagePath,
+      galat: error?.message ?? "tidak ada data",
     });
-
-    revalidatePath(`/dashboard/materi/${materialId}`);
-    revalidatePath("/dashboard/materi");
-    revalidatePath("/dashboard", "layout");
-    return { ok: true, message: "Analisis struktur materi dijalankan ulang." };
-  } catch (error) {
-    return fail(error instanceof Error ? error.message : "Analisis gagal.");
+    return null;
   }
+
+  const byte = new Uint8Array(await data.arrayBuffer());
+  const nama = storagePath.split("/").pop() ?? storagePath;
+  return { byte, nama };
 }
+
+/**
+ * Ekstraksi teks dari byte yang diunduh.
+ *
+ * Fungsi ini membungkus ulang byte menjadi File supaya ekstraksi PDF, DOCX,
+ * dan teks memakai satu jalur yang sama dengan versi peramban.
+ */
+async function ekstrakDariByte(
+  byte: Uint8Array,
+  nama: string,
+): Promise<{ text: string; warning?: string }> {
+  const ekstensi = nama.split(".").pop()?.toLowerCase();
+  const contentType =
+    ekstensi === "pdf"
+      ? "application/pdf"
+      : ekstensi === "docx"
+        ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        : "text/plain";
+
+  const berkas = new File([byte as BlobPart], nama, { type: contentType });
+  return extractMaterialText(berkas);
+}
+
+/**
+ * Analisis ulang struktur materi.
+ *
+ * Dihapus karena versi yang dipakai tombol "Proses ulang" ada di
+ * src/actions/ai.ts sebagai reanalyzeMaterialAction. Versi ini hanya
+ * memakai analisis heuristik lokal dan tidak pernah dipanggil.
+ */
 
 /** Setujui satu versi adaptasi. */
 export async function approveAdaptationAction(input: {
