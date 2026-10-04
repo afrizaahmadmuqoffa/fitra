@@ -315,6 +315,7 @@ export const getTeacher = cache(async (): Promise<TeacherProfile> => {
     city: row.city ?? "",
     subjects: row.subjects ?? [],
     photoUrl: row.avatarUrl ?? "",
+    onboardingCompleted: row.onboardingCompleted,
   };
 });
 

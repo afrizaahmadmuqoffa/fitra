@@ -1,35 +1,38 @@
-import { UserCog, FileCheck2, QrCode } from "lucide-react";
+import { MessageSquareText, ListOrdered, Touchpad } from "lucide-react";
 import { Reveal } from "@/components/marketing/reveal";
 
 const pillars = [
   {
-    title: "Profil belajar jadi dasar",
-    body: "Anda memetakan kemampuan akademik, sosial-emosional, motorik, kemandirian, preferensi belajar, dan bentuk interaksi yang bisa dilakukan siswa. Hasil pemetaan itu yang dipakai AI sebagai pedoman.",
-    icon: UserCog,
+    title: "Bahasa",
+    body: "Kalimat dan kosakata disesuaikan dengan kemampuan siswa.",
+    icon: MessageSquareText,
   },
   {
-    title: "AI menulis, Anda memutuskan",
-    body: "Setiap hasil adaptasi berstatus draft. Anda menyunting, meminta dibuat ulang, lalu menyetujui. Tidak ada satu pun materi yang sampai ke siswa tanpa persetujuan Anda.",
-    icon: FileCheck2,
+    title: "Struktur",
+    body: "Materi dapat dipecah menjadi langkah-langkah yang lebih mudah diikuti.",
+    icon: ListOrdered,
   },
   {
-    title: "QR untuk siswa, tanpa login",
-    body: "Setiap siswa punya QR pribadi. Memindai cukup untuk masuk. Antarmuka menyesuaikan ukuran teks, kontras, kecepatan audio, dan bentuk jawaban dari profil siswa.",
-    icon: QrCode,
+    title: "Interaksi",
+    body: "Bentuk latihan dan cara menjawab dapat disesuaikan, seperti memilih, menyentuh, berbicara, atau mengetik.",
+    icon: Touchpad,
   },
 ];
 
 export function Solusi() {
+  const BahasaIcon = pillars[0].icon;
+  const StrukturIcon = pillars[1].icon;
+  const InteraksiIcon = pillars[2].icon;
+
   return (
     <section id="solusi" className="bg-muted/40 py-20 md:py-28">
       <div className="mx-auto max-w-[1400px] px-4 md:px-8">
         <Reveal className="max-w-[42ch]">
           <h2 className="text-3xl font-bold tracking-tight text-balance md:text-4xl">
-            Guru tetap pegang kendali penuh
+            Fitra mengubah satu materi menjadi bahan belajar yang lebih sesuai.
           </h2>
           <p className="mt-4 text-base leading-relaxed text-muted-foreground">
-            AI mempercepat pekerjaan yang berulang. Keputusan mengenai materi
-            tetap milik Anda.
+            Guru tidak perlu memulai dari banyak versi materi. Cukup unggah satu materi pelajaran. Fitra membaca isinya, melihat profil belajar siswa, lalu menyusun draft adaptasi.
           </p>
         </Reveal>
 
@@ -44,8 +47,8 @@ export function Solusi() {
                   {pillars[0].body}
                 </p>
               </div>
-              <div className="grid size-56 shrink-0 place-items-center rounded-xl bg-accent text-accent-foreground md:self-stretch">
-                <UserCog className="size-24" strokeWidth={1.5} />
+              <div className="grid size-28 shrink-0 place-items-center rounded-xl bg-accent text-accent-foreground md:self-stretch">
+                <BahasaIcon className="size-12" strokeWidth={1.5} />
               </div>
             </div>
           </Reveal>
@@ -53,16 +56,13 @@ export function Solusi() {
           <Reveal delay={0.06} className="md:col-span-5">
             <div className="flex h-full flex-col justify-center gap-6 rounded-2xl bg-primary p-6 text-primary-foreground md:p-8">
               <div className="flex items-start gap-3">
-                <FileCheck2 className="size-8 shrink-0 text-primary-foreground/70" strokeWidth={1.5} />
+                <StrukturIcon className="size-8 shrink-0 text-primary-foreground/70" strokeWidth={1.5} />
                 <h3 className="font-heading text-2xl font-bold tracking-tight">
                   {pillars[1].title}
                 </h3>
               </div>
               <p className="leading-relaxed text-primary-foreground/85">
                 {pillars[1].body}
-              </p>
-              <p className="font-mono text-sm text-primary-foreground/70">
-                draft &gt; edited &gt; approved
               </p>
             </div>
           </Reveal>
@@ -77,8 +77,8 @@ export function Solusi() {
                   {pillars[2].body}
                 </p>
               </div>
-              <div className="grid aspect-16/9 place-items-center rounded-xl bg-accent text-accent-foreground">
-                <QrCode className="size-32" strokeWidth={1.5} />
+              <div className="mx-auto grid aspect-video w-1/2 place-items-center rounded-xl bg-accent text-accent-foreground">
+                <InteraksiIcon className="size-16" strokeWidth={1.5} />
               </div>
             </div>
           </Reveal>

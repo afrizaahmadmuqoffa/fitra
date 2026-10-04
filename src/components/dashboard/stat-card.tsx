@@ -12,6 +12,7 @@ export function StatCard({
   icon: Icon,
   href,
   className,
+  tour,
 }: {
   label: string;
   value: string | number;
@@ -19,6 +20,8 @@ export function StatCard({
   icon?: LucideIcon;
   href?: string;
   className?: string;
+  /** Target tur dashboard (driver.js). */
+  tour?: string;
 }) {
   const body = (
     <>
@@ -46,6 +49,7 @@ export function StatCard({
   if (href) {
     return (
       <Card
+        data-tour={tour}
         className={cn(
           "border-border/80 bg-card transition-colors hover:border-primary/40 focus-within:border-primary/60",
           className,
@@ -62,6 +66,8 @@ export function StatCard({
   }
 
   return (
-    <Card className={cn("border-border/80 bg-card p-4", className)}>{body}</Card>
+    <Card data-tour={tour} className={cn("border-border/80 bg-card p-4", className)}>
+      {body}
+    </Card>
   );
 }

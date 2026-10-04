@@ -51,6 +51,7 @@ export interface TeacherProfile {
   city: string;
   subjects: string[];
   photoUrl: string;
+  onboardingCompleted: boolean;
 }
 
 export interface Student {

@@ -90,6 +90,9 @@ export const profiles = pgTable(
     city: text("city"),
     subjects: jsonb("subjects").$type<string[]>(),
     preferences: jsonb("preferences").$type<ProfilePreferences>(),
+    onboardingCompleted: boolean("onboarding_completed")
+      .notNull()
+      .default(false),
     createdAt: createdAt(),
     updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" })
       .defaultNow()

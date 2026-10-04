@@ -15,6 +15,8 @@ export interface NavItem {
   href: string;
   icon: LucideIcon;
   description: string;
+  /** Target tur dashboard (driver.js). Kosong berarti tidak disorot. */
+  tour?: string;
 }
 
 /** Sidebar Guru (Bab 7). Tidak ada entri notifikasi: notifikasi hanya di header bell. */
@@ -36,6 +38,7 @@ export const dashboardNav: NavItem[] = [
     href: "/dashboard/kelas",
     icon: GraduationCap,
     description: "Kelas dan QR akses",
+    tour: "nav-kelas",
   },
   {
     label: "Materi",
@@ -48,6 +51,7 @@ export const dashboardNav: NavItem[] = [
     href: "/dashboard/progres",
     icon: ChartNoAxesColumn,
     description: "Partisipasi dan waktu belajar",
+    tour: "nav-progres",
   },
   {
     label: "PPI",
@@ -78,5 +82,4 @@ export const publicNav: { label: string; href: string }[] = [
   { label: "Fitur", href: "/#fitur" },
   { label: "Cara kerja", href: "/#cara-kerja" },
   { label: "Tentang", href: "/#tentang" },
-  { label: "Panduan", href: "/#panduan" },
 ];

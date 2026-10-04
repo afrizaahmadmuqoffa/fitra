@@ -8,7 +8,6 @@ const columns = [
       { label: "Fitur", href: "/#fitur" },
       { label: "Cara kerja", href: "/#cara-kerja" },
       { label: "Solusi", href: "/#solusi" },
-      { label: "Panduan Guru", href: "/#panduan" },
     ],
   },
   {

@@ -173,13 +173,10 @@ export function DashboardHeader({
             </span>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem asChild>
+<DropdownMenuItem asChild>
             <Link href="/dashboard/pengaturan">Pengaturan akun</Link>
           </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href="/#panduan">Panduan penggunaan</Link>
-          </DropdownMenuItem>
-<DropdownMenuSeparator />
+          <DropdownMenuSeparator />
           <SignOutItem />
         </DropdownMenuContent>
       </DropdownMenu>

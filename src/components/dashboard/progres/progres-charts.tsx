@@ -22,7 +22,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { ToneBadge } from "@/components/dashboard/feedback";
 import { DISABILITY_SHORT } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -336,9 +335,6 @@ export function ProgresCharts({
               <span aria-hidden="true" className="size-2.5 rounded-sm bg-chart-1" />
               Sesi diselesaikan
             </span>
-            <Button variant="link" size="sm" asChild className="h-auto p-0">
-              <Link href="/#panduan">Cara membaca data progres</Link>
-            </Button>
           </div>
         </CardContent>
       </Card>

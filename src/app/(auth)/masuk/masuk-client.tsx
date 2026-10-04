@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -371,17 +370,7 @@ export function MasukClient({
         <TabsContent value="daftar" className="mt-5">
           <RegisterForm />
         </TabsContent>
-      </Tabs>
-
-      <p className="mt-6 text-sm text-muted-foreground">
-        Belum punya akun?{" "}
-        <Link
-          href="/#panduan"
-          className="font-medium text-primary underline-offset-4 hover:underline"
-        >
-          Lihat panduan terlebih dahulu
-        </Link>
-      </p>
+</Tabs>
     </div>
   );
 }

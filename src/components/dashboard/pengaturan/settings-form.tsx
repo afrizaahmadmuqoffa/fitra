@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import {
   changePasswordAction,
+  resetOnboardingAction,
   updateNotificationPreferencesAction,
   updateTeacherProfileAction,
 } from "@/actions/auth";
@@ -22,7 +23,16 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Field, FieldSet } from "@/components/dashboard/field";
 import { accountSchema, type AccountInput } from "@/lib/validation";
-import { BadgeCheck, KeyRound, Monitor, Moon, ShieldAlert, Sun, Trash2 } from "lucide-react";
+import {
+  BadgeCheck,
+  Compass,
+  KeyRound,
+  Monitor,
+  Moon,
+  ShieldAlert,
+  Sun,
+  Trash2,
+} from "lucide-react";
 import type { TeacherProfile } from "@/lib/dummy/types";
 
 const NOTIFICATION_OPTIONS = [
@@ -68,7 +78,8 @@ export function SettingsForm({ teacher }: { teacher: TeacherProfile }) {
     profile: true,
     system: true,
   });
-  const [digest, setDigest] = React.useState("harian");
+const [digest, setDigest] = React.useState("harian");
+  const [restartingTour, setRestartingTour] = React.useState(false);
   const [password, setPassword] = React.useState({ current: "", next: "", confirm: "" });
 
   const form = useForm<AccountInput>({
@@ -418,6 +429,47 @@ onValueChange={(value) => {
               Tampilan gelap dan terang sudah diuji memenuhi WCAG 2.2 AA. Pilihan
               Sistem mengikuti pengaturan perangkat Anda.
             </p>
+          </CardContent>
+        </Card>
+
+<Card className="border-border/80">
+          <CardContent className="space-y-4 pt-6">
+            <div className="flex items-start gap-3">
+              <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-accent text-accent-foreground">
+                <Compass className="size-4.5" aria-hidden="true" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold">Tur panduan dashboard</p>
+                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                  Tur enam langkah yang muncul saat pertama kali masuk. Jalankan
+                  ulang kapan saja kalau lupa urutan kerjanya.
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              className="w-full"
+              disabled={restartingTour}
+              onClick={async () => {
+                setRestartingTour(true);
+                try {
+                  const result = await jalankanAction(resetOnboardingAction);
+                  if (!result.ok) {
+                    toast.error("Tur belum bisa dijalankan", {
+                      description: result.message,
+                    });
+                    return;
+                  }
+                  toast.success("Tur akan muncul di Dasbor");
+                  router.push("/dashboard");
+                } finally {
+                  setRestartingTour(false);
+                }
+              }}
+            >
+              <Compass className="size-4" aria-hidden="true" />
+              Jalankan ulang tur
+            </Button>
           </CardContent>
         </Card>
 

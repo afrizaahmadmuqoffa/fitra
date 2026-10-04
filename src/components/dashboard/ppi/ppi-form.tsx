@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -529,13 +528,6 @@ export function PpiForm({
           </Button>
         )}
       </div>
-
-      <p className="text-xs text-muted-foreground">
-        <Link href="/#panduan" className="underline underline-offset-4">
-          Baca panduan penyusunan PPI
-        </Link>{" "}
-        bila Anda belum pernah menyusun dokumen ini.
-      </p>
     </div>
   );
 }

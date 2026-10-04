@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useWatch } from "react-hook-form";
@@ -922,19 +921,6 @@ export function StudentWizard({
             </CardContent>
           </Card>
         </div>
-      ) : null}
-
-      {isEdit ? (
-        <p className="text-xs text-muted-foreground">
-          Sumber data utama ada di{" "}
-          <Link
-            href="/#panduan"
-            className="underline underline-offset-4"
-          >
-            panduan pemetaan profil
-          </Link>
-          .
-        </p>
       ) : null}
 
       <WizardFooter

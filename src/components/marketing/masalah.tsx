@@ -1,27 +1,22 @@
-import { FileX, Clock, Ban, CalendarClock } from "lucide-react";
+import { SlidersHorizontal, UserCheck, FileText } from "lucide-react";
 import { Reveal } from "@/components/marketing/reveal";
 import { BlobShape } from "@/components/marketing/blob-shape";
 
 const problems = [
   {
-    title: "Satu materi tidak bisa untuk semua siswa",
-    body: "Kemampuan membaca, menulis, dan berhitung antar siswa bisa berbeda beberapa tingkat. Satu lembar kerja yang sama membuat sebagian siswa menyerah di halaman pertama.",
-    icon: FileX,
+    title: "Satu materi, banyak penyesuaian",
+    body: "Guru perlu menyesuaikan bahasa, jumlah informasi, media, instruksi, sampai cara siswa menjawab.",
+    icon: SlidersHorizontal,
   },
   {
-    title: "Media adaptif dikerjakan manual satu per satu",
-    body: "Gambar besar, rekaman audio, kartu jawaban, dan kalimat pendek harus dibuat satu per satu untuk setiap siswa. Waktu guru habis untuk tugas ini.",
-    icon: Clock,
+    title: "Profil siswa tidak berhenti pada jenis ketunaan",
+    body: "Jenis hambatan yang sama belum tentu membutuhkan cara belajar yang sama. Kemampuan membaca, berhitung, motorik, komunikasi, preferensi belajar, dan aspek perkembangan lainnya ikut menentukan.",
+    icon: UserCheck,
   },
   {
-    title: "Siswa dengan hambatan motor dan komunikasi sulit masuk",
-    body: "Login dengan nama pengguna dan kata sandi panjang adalah halangan pertama. Banyak yang akhirnya tidak bisa memulai belajar sama sekali.",
-    icon: Ban,
-  },
-  {
-    title: "Dokumen PPI lama selesai dan sering tertunda",
-    body: "Menyusun tujuan, layanan, jadwal, dan evaluasi untuk setiap siswa membutuhkan waktu berjam-jam setiap awal tahun ajaran.",
-    icon: CalendarClock,
+    title: "PPI membutuhkan gambaran siswa yang utuh",
+    body: "Perencanaan pembelajaran individual perlu berangkat dari profil dan kebutuhan siswa, kemudian digunakan untuk menentukan tujuan, layanan, dan evaluasi pembelajaran.",
+    icon: FileText, 
   },
 ];
 
@@ -31,8 +26,7 @@ export function Masalah() {
       <div className="mx-auto max-w-[1400px] px-4 md:px-8">
         <Reveal className="max-w-[46ch]">
           <h2 className="text-3xl font-bold tracking-tight text-balance md:text-4xl">
-            Diferensiasi yang baik tidak bisa dimulai dari lembar kerja yang
-            sama
+            Di kelas yang sama, kebutuhan belajarnya tidak selalu sama.
           </h2>
           <p className="mt-4 text-base leading-relaxed text-muted-foreground">
             Empat hal yang paling sering menghambat guru SLB di kelas.
@@ -44,7 +38,7 @@ export function Masalah() {
             const Icon = item.icon;
             return (
               <Reveal key={item.title} delay={i * 0.05}>
-                <div className="relative border-t-2 border-border pt-5 transition-shadow hover:shadow-lg hover:shadow-primary/10">
+                <div className="relative h-full rounded-lg border border-border p-5 transition-shadow hover:shadow-lg hover:shadow-primary/10">
                   <BlobShape
                     variant={(((i + 1) % 5) + 1).toString() as "1" | "2" | "3" | "4" | "5"}
                     className="absolute -top-8 -left-4 size-32 text-muted/20 -z-10"

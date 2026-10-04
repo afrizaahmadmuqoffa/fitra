@@ -110,3 +110,49 @@ export async function updateNotificationPreferencesAction(input: {
     );
   }
 }
+
+/**
+ * Tandai tur dashboard sudah pernah ditutup guru (selesai atau dilewati).
+ * Dipanggil dari `OnboardingWizard` saat driver.js menyelesaikan atau
+ * membatalkan tur. Idempoten: menutup dua kali tidak merusak data.
+ */
+export async function completeOnboardingAction(): Promise<ActionResult> {
+  try {
+    const context = await requireAuthContext();
+    await withRlsDb(context.claims, async (tx) => {
+      await tx
+        .update(profiles)
+        .set({ onboardingCompleted: true, updatedAt: new Date().toISOString() })
+        .where(eq(profiles.id, context.userId));
+    });
+    revalidatePath("/dashboard", "layout");
+    return { ok: true, message: "Tur ditandai selesai." };
+  } catch (error) {
+    return fail(
+      error instanceof Error ? error.message : "Status tur gagal disimpan.",
+    );
+  }
+}
+
+/**
+ * Setel ulang status tur supaya guru bisa menjalankannya lagi dari
+ * halaman /dashboard/pengaturan. Dipakai oleh tombol "Jalankan ulang tur".
+ */
+export async function resetOnboardingAction(): Promise<ActionResult> {
+  try {
+    const context = await requireAuthContext();
+    await withRlsDb(context.claims, async (tx) => {
+      await tx
+        .update(profiles)
+        .set({ onboardingCompleted: false, updatedAt: new Date().toISOString() })
+        .where(eq(profiles.id, context.userId));
+    });
+    revalidatePath("/dashboard", "layout");
+    revalidatePath("/dashboard/pengaturan");
+    return { ok: true, message: "Tur siap dijalankan ulang." };
+  } catch (error) {
+    return fail(
+      error instanceof Error ? error.message : "Status tur gagal disetel ulang.",
+    );
+  }
+}

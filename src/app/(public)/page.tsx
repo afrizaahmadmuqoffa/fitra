@@ -4,7 +4,6 @@ import { Masalah } from "@/components/marketing/masalah";
 import { Solusi } from "@/components/marketing/solusi";
 import { CaraKerja, Fitur } from "@/components/marketing/fitur";
 import { TentangSection } from "@/components/marketing/tentang-section";
-import { PanduanSection } from "@/components/marketing/panduan-section";
 import { CtaDaftar } from "@/components/marketing/testimoni";
 
 export const metadata: Metadata = {
@@ -44,7 +43,6 @@ export default function LandingPage() {
       <Fitur />
       <CaraKerja />
       <TentangSection />
-      <PanduanSection />
       <CtaDaftar />
     </>
   );

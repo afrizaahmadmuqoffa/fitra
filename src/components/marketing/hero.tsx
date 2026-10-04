@@ -13,7 +13,7 @@ export function Hero() {
       <div className="relative z-10 mx-auto w-full max-w-[1400px] px-4 md:px-8">
         <div className="mx-auto max-w-[42rem] text-center">
           <p className="text-xs font-semibold tracking-[0.18em] text-muted-foreground uppercase">
-            Platform adaptasi pembelajaran
+            Platform adaptasi pembelajaran SLB
           </p>
           <h1 className="mt-5 text-4xl leading-[1.05] font-bold tracking-tight text-balance md:text-5xl lg:text-6xl">
             Satu Materi, Banyak Cara Belajar
@@ -30,7 +30,7 @@ export function Hero() {
               </Link>
             </Button>
             <Button asChild size="lg" variant="outline" className="h-12 px-6 whitespace-nowrap">
-              <Link href="/#panduan">Lihat Cara Kerja</Link>
+              <Link href="/#cara-kerja">Lihat Cara Kerja</Link>
             </Button>
           </div>
         </div>

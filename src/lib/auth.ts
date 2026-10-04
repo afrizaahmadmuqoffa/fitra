@@ -63,6 +63,7 @@ function toTeacherProfile(row: typeof profiles.$inferSelect): TeacherProfile {
     city: row.city ?? "",
     subjects: row.subjects ?? [],
     photoUrl: row.avatarUrl ?? "",
+    onboardingCompleted: row.onboardingCompleted,
   };
 }
 
