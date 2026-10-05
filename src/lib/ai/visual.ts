@@ -224,6 +224,8 @@ async function mintaUrlGambar(input: {
     n: 1,
     width: input.width,
     height: input.height,
+    nologo: true,
+    enhance: false,
   };
 
   let galatTerakhir: unknown = null;

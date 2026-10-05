@@ -1,16 +1,4 @@
-/**
- * Prompt AI untuk analisis dan adaptasi materi.
- *
- * Prinsip yang dipegang modul ini:
- * - Prompt ditulis sebagai instruksi kerja untuk guru SLB berpengalaman,
- *   bukan sekadar "ringkas teks ini".
- * - Privasi dijaga sejak prompt disusun. Yang dikirim hanya snapshot profil
- *   pembelajaran. Nama, kelas, sekolah, usia, jenis kelamin, foto, dan
- *   catatan bebas guru tidak pernah masuk ke model (PRD Task 3.1).
- * - Nama field kontrak tidak ditulis dalam huruf campur di dalam string
- *   prompt. Nama aslinya sudah ada di JSON Schema yang dikirim bersamaan,
- *   jadi cukup sebut arti field-nya dengan bahasa Indonesia.
- */
+
 import type {
   DisabilityType,
   MaterialAnalysis,
@@ -324,18 +312,32 @@ export const SISTEM_ADAPTASI = [
   "- Satu bagian hanya satu konsep.",
   "- Ikuti urutan belajar dari materi sumber.",
   "- Judul bagian maksimal 6 kata dan tidak diakhiri titik.",
-  "- Isi bagian berisi 2 sampai 4 kalimat sebagai penjelasan lengkap.",
+  "- Isi bagian berisi 3 sampai 6 kalimat yang menjelaskan konsep secara lengkap.",
   "- Setiap bagian wajib punya naskah audio.",
+  "",
+  "ATURAN KEDALAMAN KONTEN:",
+  "- Jelaskan setiap konsep dengan urutan: definisi atau gambaran umum → contoh konkret → kaitan dengan kehidupan sehari-hari anak.",
+  "- Gunakan contoh nyata dan situasi yang dekat dengan pengalaman siswa SLB (misalnya kegiatan rumah, sekolah, pasar).",
+  "- Bila suatu konsep sulit dipahami langsung, berikan analogi sederhana sebelum penjelasan utama.",
+  "- Ulangi kata kunci penting di kalimat yang berbeda dengan cara berbeda agar melekat.",
+  "- Untuk siswa tingkat rendah: jelaskan satu hal, beri contoh, tunjukkan kembali dengan kata berbeda.",
+  "- Untuk siswa tingkat sedang: jelaskan konsep, beri dua contoh, minta anak mengaitkan dengan pengalaman.",
+  "- Untuk siswa tingkat tinggi: jelaskan konsep, beri contoh, dorong anak membuat kaitan sendiri lewat aktivitas.",
   "",
   "ATURAN NASKAH AUDIO:",
   "- Naskah audio akan dibacakan dengan suara ke anak.",
-  "- Bentuknya seperti guru berbicara, bukan daftar poin dan bukan kalimat yang harus dibaca sendiri.",
+  "- Bentuknya seperti guru berbicara hangat dan pelan, bukan daftar poin.",
+  "- Naskah audio HARUS mencakup SELURUH isi bagian, termasuk semua penjelasan dan contoh — anak yang tidak bisa membaca layar harus tetap mendapat informasi lengkap.",
   "- Dilarang memakai markdown, penanda daftar, tanda pengurut, angka berbentuk digit, dan keterangan adegan.",
   "- Tulis angka dalam bentuk kata supaya terdengar wajar. Contoh: satu dua tiga empat, bukan 1, 2, 3, 4.",
   "- Sebut ulang kata kunci di akhir kalimat.",
   "- Kalimat harus berdiri sendiri tanpa perlu melihat teks di layar.",
+  "- Panjang naskah audio boleh lebih panjang dari isi bagian karena harus bisa dipahami hanya dengan didengar.",
   "",
   "ATURAN AKTIVITAS:",
+  "- Tiap bagian yang mengandung konsep penting HARUS memiliki minimal satu aktivitas.",
+  "- Bagian pengantar atau transisi boleh tidak memiliki aktivitas.",
+  "- Setiap soal harus menguji satu konsep spesifik dari bagian itu, bukan hal umum.",
   "- Prompt aktivitas berupa satu kalimat yang langsung menyatakan kebutuhan anak.",
   "- Prompt jangan pernah membocorkan jawaban benar.",
   "- Untuk aktivitas tekan pilihan dan jawab dengan suara: isi 2 sampai 4 pilihan dan tepat satu pilihan benar.",
@@ -434,11 +436,13 @@ export function bangunPromptAdaptasi(input: {
     "",
     "TUGASMU:",
     "1. Pecah materi menjadi bagian-bagian kecil yang masing-masing satu konsep.",
-    "2. Tulis ulang penjelasan dengan tingkat bahasa anak ini.",
-    "3. Tulis naskah audio untuk tiap bagian mengikuti aturan naskah audio.",
-    "4. Tambahkan satu aktivitas singkat di bagian yang paling tepat, dan lengkapi daftar jawaban yang diterima dengan semua varyasi jawaban.",
-    "5. Ajukan permintaan gambar hanya untuk bagian yang benar-benar butuh, sesuai preferensi belajar anak ini.",
-    "6. Tulis catatan adaptasi yang menjelaskan apa yang diubah dan mengapa, agar guru bisa menilai dengan cepat.",
+    "2. Tulis ulang setiap penjelasan dengan urutan: gambaran umum → contoh konkret → kaitan kehidupan sehari-hari, menggunakan tingkat bahasa anak ini.",
+    "3. Pastikan setiap bagian memiliki 3–6 kalimat penjelasan yang cukup lengkap, bukan hanya definisi.",
+    "4. Tulis naskah audio untuk tiap bagian yang mencakup SELURUH isi — anak yang hanya mendengar harus memahami semuanya.",
+    "5. Tambahkan aktivitas di setiap bagian yang mengandung konsep penting (bukan hanya satu aktivitas untuk seluruh materi).",
+    "6. Lengkapi daftar jawaban yang diterima dengan semua variasi jawaban yang mungkin.",
+    "7. Ajukan permintaan gambar hanya untuk bagian yang benar-benar butuh, sesuai preferensi belajar anak ini.",
+    "8. Tulis catatan adaptasi yang menjelaskan apa yang diubah dan mengapa, agar guru bisa menilai dengan cepat.",
     "",
     "Ingat: hasil ini ditinjau guru sebelum dipakai siswa.",
     "Keluarkan hanya JSON yang sesuai skema.",

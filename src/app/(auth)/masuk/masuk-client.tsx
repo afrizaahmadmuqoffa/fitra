@@ -382,7 +382,7 @@ export function MasukClient({
         </CardTitle>
         <CardDescription>
           {mode === "login"
-            ? "Gunakan akun guru Anda. Siswa tidak perlu akun."
+            ? "Masuk ke akun Fitra anda."
             : "Daftar sebagai guru SLB untuk mulai menggunakan Fitra."}
         </CardDescription>
       </CardHeader>

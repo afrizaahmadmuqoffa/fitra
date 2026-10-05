@@ -104,52 +104,43 @@ export async function susunAdaptasi(input: {
 }
 
 /**
- * Menggabungkan prompt gambar yang disimpan AI menjadi satu prompt lengkap
- * untuk Pollinations.
+ * Membangun prompt Bahasa Inggris siap pakai untuk Pollinations image generation.
  *
- * Pollinations menerima satu gambar per permintaan, jadi tiap bagian yang
- * meminta visual diproses terpisah. Gaya dan larangan gambar ikut disertakan
- * supaya hasil antar bagian konsisten dan aman untuk anak.
+ * Flux.1-schnell (dan semua model diffusion) dilatih dengan prompt Bahasa
+ * Inggris. Mengirim deskripsi Bahasa Indonesia menghasilkan gambar acak
+ * karena model tidak memahami konteksnya.
+ *
+ * Kolom visual_assets.prompt sudah menyimpan versi Bahasa Inggris sejak
+ * INSERT di ai.ts, jadi fungsi ini hanya perlu menerimanya langsung.
+ *
+ * Format yang efektif untuk Flux adalah dense tag-style: subjek konkret
+ * diikuti deskripsi gaya, bukan narasi panjang.
  */
 export function susunPromptGambar(input: {
-  prompt: string;
-  altText: string;
+  /** Deskripsi subjek + situasi dalam Bahasa Inggris — isi dari visual_assets.prompt */
+  promptEn: string;
   judulMateri: string;
   sectionIndex: number;
 }): string {
-  return [
-    "Buat satu ilustrasi edukatif untuk anak sekolah luar biasa di Indonesia.",
-    "",
-    `KONTEKS MATERI: ${input.judulMateri}, bagian ${input.sectionIndex + 1}.`,
-    `APA YANG HARUS DIGAMBAR: ${input.prompt}`,
-    "",
-    "GAYA GAMBAR:",
-    "- Ilustrasi datar seperti buku pelajaran SD Indonesia, digambar tangan",
-    "- Garis tepi hitam tebal mengelilingi setiap bentuk",
-    "- Bentuk geometris sederhana: lingkaran, persegi, segitiga, oval",
-    "- Wajah digambar sangat sederhana: dua titik mata dan garis mulut",
-    "- Warna cerah tetapi tidak menyilaukan",
-    "",
-    "PENCAHAYAAN DAN WARNA:",
-    "- Cahaya merata dari semua arah, tanpa bayangan yang dramatik",
-    "- Langit biru muda dan tanah hijau muda saat diperlukan",
-    "- Fokus warna pada objek utama, latar tidak ramai",
-    "",
-    "KOMPOSISI:",
-    "- Satu objek utama di tengah gambar",
-    "- Pandangan lurus dari depan, sudut pandang sederhana",
-    "- Proporsi badan sederhana dan tidak detail",
-    "",
-    "LATAR:",
-    "- Putih bersih atau warna sangat muda",
-    "- Tidak ada objek lain yang mengganggu",
-    "",
-    "DILARANG KERAS:",
-    "- Tidak ada tulisan, huruf, angka, atau label di dalam gambar",
-    "- Tidak ada wajah orang sungguhan atau foto",
-    "- Tidak ada kekerasan, senjata, darah, atau monster",
-    "- Tidak ada logo atau watermark di gambar",
-    "- Tidak ada detail yang terlalu realistis atau gelap",
-    "- Tidak ada gaya atau budaya dari luar Indonesia",
-  ].join("\n");
+  const positive = [
+    // Subjek utama — diletakkan pertama agar bobot CLIP maksimal
+    input.promptEn,
+    // Gaya — ilustrasi buku anak Indonesia
+    "flat illustration, Indonesian elementary school textbook style",
+    "hand-drawn, thick black outlines, simple geometric shapes",
+    "bright cheerful colors, white background",
+    "clean composition, single centered main subject",
+    "child-friendly educational illustration",
+  ].join(", ");
+
+  // Negative tag disisipkan langsung ke prompt positif — Pollinations API
+  // belum expose parameter negative_prompt via /v1/images/generations.
+  const negative = [
+    "no text, no letters, no numbers, no words, no labels",
+    "no photorealism, no dark themes, no violence, no gore",
+    "no watermark, no logo, no border, no frame",
+    "no multiple subjects, no busy background",
+  ].join(", ");
+
+  return `${positive}, ${negative}`;
 }

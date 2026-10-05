@@ -144,9 +144,9 @@ const zPermintaanVisualAi = z.object({
 
 const zBagianAi = z.object({
   title: z.string().min(2).max(120),
-  body: z.array(z.string().min(1).max(600)).min(1).max(8),
-  audioScript: z.string().min(10).max(1500),
-  interactions: z.array(zInteraksiAi).max(3),
+  body: z.array(z.string().min(1).max(800)).min(2).max(12),
+  audioScript: z.string().min(10).max(3000),
+  interactions: z.array(zInteraksiAi).max(4),
   hasVisual: z.boolean(),
   visualSpec: zPermintaanVisualAi.nullable(),
 });
@@ -194,18 +194,18 @@ export const SKEMA_ADAPTASI: Record<string, unknown> = {
           body: {
             type: "array",
             description:
-              "Isi bagian sebagai kalimat terpisah. Panjang kalimat mengikuti tingkat bahasa siswa.",
+              "Isi bagian sebagai kalimat terpisah (3–6 kalimat). Tiap kalimat mengikuti tingkat bahasa siswa. Urutan: gambaran umum → contoh konkret → kaitan kehidupan sehari-hari.",
             items: { type: "string" },
           },
           audioScript: {
             type: "string",
             description:
-              "Naskah yang akan dibacakan dengan suara. Bentuknya narasi lisan yang mengalir, bukan daftar poin dan bukan kalimat dry yang harus dibaca. Tidak boleh berisi markdown, penanda, atau instruksi apa pun untuk pembaca layar.",
+              "Naskah yang akan dibacakan dengan suara. Harus mencakup SELURUH isi bagian sehingga anak yang tidak melihat layar tetap mendapat informasi lengkap. Bentuknya narasi lisan hangat, bukan daftar poin. Tidak boleh berisi markdown, penanda, atau instruksi apa pun untuk pembaca layar.",
           },
           interactions: {
             type: "array",
             description:
-              "Soal atau aktivitas singkat. Boleh kosong bila bagian ini tidak perlu soal.",
+              "Soal atau aktivitas untuk bagian ini. Setiap bagian yang mengandung konsep penting HARUS memiliki minimal satu aktivitas. Boleh kosong hanya untuk bagian pengantar atau transisi.",
             items: {
               type: "object",
               properties: {
@@ -253,17 +253,18 @@ export const SKEMA_ADAPTASI: Record<string, unknown> = {
             properties: {
               subject: {
                 type: "string",
-                description: "Obyek utama yang digambar, konkret dan tunggal.",
+                description:
+                  "The main object to draw, in English, concrete and singular. Example: 'three red number cards', 'a green frog'.",
               },
               scene: {
                 type: "string",
                 description:
-                  "Situasi lengkap yang memuat objek, jumlah, warna, dan latar belakang yang relevan.",
+                  "Complete scene description in English: what the object looks like, how many, what color, what background. Example: 'three red number cards showing 1, 2, 3 arranged in a row on white background'.",
               },
               style: {
                 type: "string",
                 description:
-                  "Gaya ilustrasi, misalnya ilustrasi buku anak SDLB dengan warna cerah dan bentuk sederhana.",
+                  "Illustration style in English. Always use: 'flat illustration, Indonesian elementary school textbook style, thick black outlines'.",
               },
               safetyConstraints: {
                 type: "string",
@@ -316,12 +317,17 @@ export function keAdaptedContent(
     const media: AdaptedMedia[] = [];
     if (bagian.hasVisual && bagian.visualSpec) {
       media.push({ assetId: null, altText: bagian.visualSpec.altText.trim() });
+      // subject dan scene sudah dalam Bahasa Inggris karena JSON Schema minta Inggris.
+      // Gabungkan menjadi satu prompt Inggris siap pakai untuk Pollinations.
+      const promptEn = [
+        bagian.visualSpec.subject.trim(),
+        bagian.visualSpec.scene.trim(),
+      ]
+        .filter(Boolean)
+        .join(", ");
       requests.push({
         sectionIndex,
-        subject: bagian.visualSpec.subject.trim(),
-        scene: bagian.visualSpec.scene.trim(),
-        style: bagian.visualSpec.style.trim(),
-        safetyConstraints: bagian.visualSpec.safetyConstraints.trim(),
+        promptEn,
         altText: bagian.visualSpec.altText.trim(),
       });
     }
@@ -359,9 +365,7 @@ export function keAdaptedContent(
 
 export type PermintaanVisual = {
   sectionIndex: number;
-  subject: string;
-  scene: string;
-  style: string;
-  safetyConstraints: string;
+  /** Prompt Bahasa Inggris siap dikirim ke Pollinations. */
+  promptEn: string;
   altText: string;
 };

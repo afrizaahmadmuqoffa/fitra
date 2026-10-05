@@ -57,7 +57,7 @@ export default async function DashboardPage() {
     <div className="space-y-6">
       <OnboardingWizard show={!teacher.onboardingCompleted} />
       <PageHeader
-        title={`Halo, Bu ${teacher.nickname.split(" ")[0]}`}
+        title={`Halo, ${teacher.nickname.split(" ")[0]}`}
         titleProps={{ "data-tour": "dashboard-title" } as React.HTMLAttributes<HTMLHeadingElement>}
         description="Ringkasan kelas Anda hari ini: siapa yang belajar, materi apa yang sudah terbit, dan apa yang masih perlu Anda periksa."
         actions={
@@ -122,14 +122,14 @@ export default async function DashboardPage() {
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="border-border/80 lg:col-span-2">
-          <CardHeader className="flex-row items-center justify-between gap-3 space-y-0">
+          <CardHeader className="flex-row items-start justify-between gap-3 space-y-0">
             <div>
               <CardTitle className="text-base">Belajar Terbaru</CardTitle>
               <p className="mt-1 text-sm text-muted-foreground">
                 Sesi siswa yang baru saja berjalan di kelas Anda.
               </p>
             </div>
-            <Button variant="ghost" size="sm" asChild className="shrink-0">
+            <Button variant="ghost" size="sm" asChild className="ml-auto shrink-0">
               <Link href="/dashboard/progres">
                 Lihat progres
                 <ArrowRight />

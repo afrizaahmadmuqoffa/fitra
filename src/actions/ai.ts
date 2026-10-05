@@ -340,13 +340,14 @@ async function susunVersiBaru(
         adaptasi.requests.map((request) => ({
           materialAdaptationId: baris.id,
           sectionIndex: request.sectionIndex,
-          prompt: `${request.subject}. ${request.scene}. Gaya: ${request.style}. Larangan: ${request.safetyConstraints}`,
+          // Simpan prompt Bahasa Inggris siap pakai — Flux dilatih Inggris.
+          prompt: request.promptEn,
           model: MODEL_GAMBAR_AKTIF,
           storagePath: "",
           mimeType: "image/png",
           altText: request.altText,
           status: "pending" as const,
-          sourceHash: sidikJariPrompt(request.altText),
+          sourceHash: sidikJariPrompt(request.promptEn),
         })),
       );
     }
@@ -500,8 +501,7 @@ export async function generateVisualAction(input: unknown): Promise<ActionResult
     try {
       const hasil = await buatVisual({
         prompt: susunPromptGambar({
-          prompt: aset.prompt,
-          altText: aset.altText,
+          promptEn: aset.prompt,
           judulMateri: judulMateri,
           sectionIndex: sectionIndex,
         }),
