@@ -6,7 +6,7 @@
 export function DotGrid() {
   return (
     <div
-      className="pointer-events-none absolute inset-0 -z-10 overflow-hidden text-muted-foreground/25"
+      className="pointer-events-none absolute inset-0 -z-10 overflow-hidden text-muted-foreground/35"
       aria-hidden="true"
     >
       <div

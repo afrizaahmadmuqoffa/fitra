@@ -2,13 +2,11 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DotGrid } from "@/components/marketing/dot-grid";
-import { IconConstellation } from "@/components/marketing/icon-constellation";
 
 export function Hero() {
   return (
     <section className="relative isolate flex min-h-screen items-center justify-center">
       <DotGrid />
-      <IconConstellation />
 
       <div className="relative z-10 mx-auto w-full max-w-[1400px] px-4 md:px-8">
         <div className="mx-auto max-w-[42rem] text-center">

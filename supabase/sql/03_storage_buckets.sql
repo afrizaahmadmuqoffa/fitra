@@ -1,7 +1,3 @@
--- =========================================================
--- Fitra: private storage buckets (PRD Bab 10)
--- Aset privat diakses lewat signed URL atau lewat server, tidak pernah publik.
--- =========================================================
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values

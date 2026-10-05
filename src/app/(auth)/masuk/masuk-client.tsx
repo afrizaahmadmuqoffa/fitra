@@ -5,11 +5,13 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { Loader2, LogIn, Mail } from "lucide-react";
+import { Loader2, LogIn, Mail, Copy, Check } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import {
@@ -134,7 +136,7 @@ const router = useRouter();
   );
 }
 
-function RegisterForm() {
+function RegisterForm({ nextPath }: { nextPath: string | null }) {
   const router = useRouter();
   const supabase = React.useMemo(() => createSupabaseBrowserClient(), []);
   const [pending, setPending] = React.useState(false);
@@ -170,21 +172,10 @@ function RegisterForm() {
       return;
     }
 
-    if (!data.session) {
-      setPending(false);
-      setFormError(
-        "Akun berhasil dibuat, tetapi sesi belum aktif. Silakan masuk dengan email dan kata sandi Anda.",
-      );
-      toast.success("Akun berhasil dibuat", {
-        description: "Silakan masuk untuk membuka dasbor.",
-      });
-      return;
-    }
-
     toast.success("Akun berhasil dibuat", {
       description: `Selamat datang, ${values.fullName}.`,
     });
-    router.replace("/dashboard");
+    router.replace(nextPath ?? "/dashboard");
     router.refresh();
   });
 
@@ -273,6 +264,83 @@ function RegisterForm() {
   );
 }
 
+function DemoAccountPopover() {
+  const [copiedEmail, setCopiedEmail] = React.useState(false);
+  const [copiedPassword, setCopiedPassword] = React.useState(false);
+
+  const copyEmail = async () => {
+    await navigator.clipboard.writeText("sri.wahyuni@slb1yogya.sch.id");
+    setCopiedEmail(true);
+    setTimeout(() => setCopiedEmail(false), 2000);
+  };
+
+  const copyPassword = async () => {
+    await navigator.clipboard.writeText("fitra2026");
+    setCopiedPassword(true);
+    setTimeout(() => setCopiedPassword(false), 2000);
+  };
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-auto p-0 text-xs text-muted-foreground hover:text-foreground"
+        >
+          Lihat akun demo
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-96">
+        <div className="space-y-3">
+          <p className="text-sm font-medium">Akun demo untuk mencoba Fitra:</p>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2 rounded-md bg-muted p-2.5">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs text-muted-foreground">Email</p>
+                <p className="font-mono text-xs">sri.wahyuni@slb1yogya.sch.id</p>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-8 shrink-0"
+                onClick={copyEmail}
+              >
+                {copiedEmail ? (
+                  <Check className="size-3.5 text-green-600" />
+                ) : (
+                  <Copy className="size-3.5" />
+                )}
+              </Button>
+            </div>
+            <div className="flex items-center justify-between gap-2 rounded-md bg-muted p-2.5">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs text-muted-foreground">Password</p>
+                <p className="font-mono text-xs">fitra2026</p>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-8 shrink-0"
+                onClick={copyPassword}
+              >
+                {copiedPassword ? (
+                  <Check className="size-3.5 text-green-600" />
+                ) : (
+                  <Copy className="size-3.5" />
+                )}
+              </Button>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Data dalam akun demo akan direset secara berkala.
+          </p>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export function MasukClient({
   nextPath,
   errorCode,
@@ -280,11 +348,10 @@ export function MasukClient({
   nextPath: string | null;
   errorCode: string | null;
 }) {
-
-
   const supabase = React.useMemo(() => createSupabaseBrowserClient(), []);
   const [googlePending, setGooglePending] = React.useState(false);
   const [googleError, setGoogleError] = React.useState<string | null>(null);
+  const [mode, setMode] = React.useState<"login" | "register">("login");
 
   const startGoogle = async () => {
     setGooglePending(true);
@@ -308,69 +375,98 @@ export function MasukClient({
     : null;
 
   return (
-    <div>
-      <h1 className="font-heading text-2xl font-bold tracking-tight">
-        Masuk ke Fitra
-      </h1>
-      <p className="mt-2 text-sm text-muted-foreground">
-        Gunakan akun guru Anda. Siswa tidak perlu akun.
-      </p>
+    <Card className="border-2 shadow-xl">
+      <CardHeader>
+        <CardTitle className="font-heading text-2xl font-bold tracking-tight">
+          {mode === "login" ? "Masuk ke Fitra" : "Buat Akun Baru"}
+        </CardTitle>
+        <CardDescription>
+          {mode === "login"
+            ? "Gunakan akun guru Anda. Siswa tidak perlu akun."
+            : "Daftar sebagai guru SLB untuk mulai menggunakan Fitra."}
+        </CardDescription>
+      </CardHeader>
 
-      {pageError && (
-        <Alert variant="destructive" className="mt-5">
-          <AlertDescription className="text-sm">{pageError}</AlertDescription>
-        </Alert>
-      )}
-
-      <Alert className="mt-5">
-        <AlertDescription className="text-sm">
-          Akun contoh untuk mencoba:{" "}
-          <span className="font-medium">sri.wahyuni@slb1yogya.sch.id</span> dengan
-          kata sandi <span className="font-medium">fitra2026</span>.
-        </AlertDescription>
-      </Alert>
-
-      <div className="mt-6 grid gap-3">
-        <Button
-          variant="outline"
-          className="h-11 w-full"
-          onClick={startGoogle}
-          disabled={googlePending}
-        >
-          {googlePending ? (
-            <Loader2 className="size-4 animate-spin" aria-hidden />
-          ) : (
-            <GoogleMark />
-          )}
-          Masuk dengan Google
-        </Button>
-        {googleError && (
-          <p className="text-sm text-destructive">{googleError}</p>
+      <CardContent>
+        {pageError && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertDescription className="text-sm">{pageError}</AlertDescription>
+          </Alert>
         )}
-      </div>
 
-      <div className="my-6 flex items-center gap-3 text-xs text-muted-foreground">
-        <span className="h-px flex-1 bg-border" aria-hidden />
-        atau
-        <span className="h-px flex-1 bg-border" aria-hidden />
-      </div>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={mode}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+          >
+            {mode === "login" ? (
+              <LoginForm nextPath={nextPath} />
+            ) : (
+              <RegisterForm nextPath={nextPath} />
+            )}
+          </motion.div>
+        </AnimatePresence>
 
-      <Tabs defaultValue="masuk">
-        <TabsList className="w-full">
-          <TabsTrigger value="masuk" className="flex-1">
-            Masuk
-          </TabsTrigger>
-          <TabsTrigger value="daftar" className="flex-1">
-            Daftar
-          </TabsTrigger>
-        </TabsList>
-        <TabsContent value="masuk" className="mt-5">
-          <LoginForm nextPath={nextPath} />
-        </TabsContent>
-        <TabsContent value="daftar" className="mt-5">
-          <RegisterForm />
-        </TabsContent>
-</Tabs>
-    </div>
+        <div className="my-6 flex items-center gap-3 text-xs text-muted-foreground">
+          <span className="h-px flex-1 bg-border" aria-hidden />
+          atau
+          <span className="h-px flex-1 bg-border" aria-hidden />
+        </div>
+
+        <div className="space-y-3">
+          <Button
+            variant="outline"
+            className="h-11 w-full"
+            onClick={startGoogle}
+            disabled={googlePending}
+          >
+            {googlePending ? (
+              <Loader2 className="size-4 animate-spin" aria-hidden />
+            ) : (
+              <GoogleMark />
+            )}
+            Masuk dengan Google
+          </Button>
+          {googleError && (
+            <p className="text-sm text-destructive">{googleError}</p>
+          )}
+        </div>
+
+        <div className="mt-6 space-y-3">
+          <p className="text-center text-sm text-muted-foreground">
+            {mode === "login" ? (
+              <>
+                Belum punya akun?{" "}
+                <button
+                  type="button"
+                  onClick={() => setMode("register")}
+                  className="font-medium text-foreground underline-offset-4 hover:underline"
+                >
+                  Daftar
+                </button>
+              </>
+            ) : (
+              <>
+                Sudah punya akun?{" "}
+                <button
+                  type="button"
+                  onClick={() => setMode("login")}
+                  className="font-medium text-foreground underline-offset-4 hover:underline"
+                >
+                  Masuk
+                </button>
+              </>
+            )}
+          </p>
+
+          <div className="flex justify-center">
+            <DemoAccountPopover />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

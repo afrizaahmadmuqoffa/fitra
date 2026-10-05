@@ -47,6 +47,7 @@ next-env.d.ts
 !.env.example
 
 PRD.md
+pollinations.md
 
 .vercel
 .env*

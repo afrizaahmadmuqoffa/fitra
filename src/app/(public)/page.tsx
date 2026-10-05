@@ -4,7 +4,7 @@ import { Masalah } from "@/components/marketing/masalah";
 import { Solusi } from "@/components/marketing/solusi";
 import { CaraKerja, Fitur } from "@/components/marketing/fitur";
 import { TentangSection } from "@/components/marketing/tentang-section";
-import { CtaDaftar } from "@/components/marketing/testimoni";
+import { CtaDaftar } from "@/components/marketing/ctaDaftar";
 
 export const metadata: Metadata = {
   title: "Satu Materi, Banyak Cara Belajar",

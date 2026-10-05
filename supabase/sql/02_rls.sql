@@ -1,14 +1,3 @@
--- =========================================================
--- Fitra: Row Level Security (PRD Bab 8)
---
--- WAJIB dijalankan. Supabase memberi hak akses penuh ke role `anon` dan
--- `authenticated` pada setiap tabel baru di schema public, jadi tanpa RLS
--- siapa pun yang memegang anon key bisa membaca seluruh data.
---
--- Semua tabel milik satu guru. Tabel turunan memakai EXISTS ke tabel induk
--- supaya RLS tetap dihitung oleh Postgres, bukan oleh filter di aplikasi.
--- =========================================================
-
 alter table public.profiles              enable row level security;
 alter table public.students              enable row level security;
 alter table public.student_profiles      enable row level security;

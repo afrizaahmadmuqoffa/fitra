@@ -1,7 +1,3 @@
--- =========================================================
--- Fitra: trigger pembuatan profil guru otomatis
--- PRD Bab 10 / Task 2.2 — tabel profiles memperluas auth.users
--- =========================================================
 
 create or replace function public.handle_new_user()
 returns trigger

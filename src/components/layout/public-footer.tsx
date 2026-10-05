@@ -52,10 +52,6 @@ export function PublicFooter() {
       </div>
       <div className="border-t">
         <div className="mx-auto flex max-w-[1400px] flex-col gap-2 px-4 py-6 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between md:px-8">
-          <p>
-            {APP_NAME} dibangun untuk guru SLB di Indonesia. Digunakan gratis
-            pada versi awal.
-          </p>
           <p>Hak cipta {APP_NAME} 2026</p>
         </div>
       </div>
