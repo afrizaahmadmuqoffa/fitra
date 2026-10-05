@@ -260,6 +260,11 @@
 .driver-popover.fitra-tour {
   all: initial !important;
   position: fixed !important;
+  bottom: 1.5rem !important;
+  left: 1.5rem !important;
+  top: auto !important;
+  right: auto !important;
+  transform: none !important;
   z-index: 9999 !important;
   font-family: var(--font-sans) !important;
   box-sizing: border-box !important;
