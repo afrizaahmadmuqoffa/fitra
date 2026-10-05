@@ -8,9 +8,10 @@ import {
   getStudents,
 } from "@/db/queries";
 import { PageHeader } from "@/components/dashboard/page-header";
+import { EmptyState } from "@/components/dashboard/empty-state";
 import { Button } from "@/components/ui/button";
 import { SiswaBrowser, type SiswaRow } from "@/components/dashboard/siswa/siswa-browser";
-import { UserPlus } from "lucide-react";
+import { UserPlus, Users } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Daftar Siswa",
@@ -69,7 +70,15 @@ export default async function StudentsPage() {
         }
       />
 
-      <SiswaBrowser rows={rows} />
+      {rows.length === 0 ? (
+        <EmptyState
+          icon={Users}
+          title="Belum ada siswa"
+          description="Tambahkan siswa untuk mulai membuat adaptasi materi sesuai profil belajar mereka."
+        />
+      ) : (
+        <SiswaBrowser rows={rows} />
+      )}
     </div>
   );
 }

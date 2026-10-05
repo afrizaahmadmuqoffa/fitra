@@ -86,12 +86,9 @@ export async function changePasswordAction(input: {
   return { ok: true, message: "Kata sandi berhasil diganti." };
 }
 
-/** Simpan preferensi notifikasi in-app dan ringkasan harian. */
+/** Simpan preferensi notifikasi in-app. */
 export async function updateNotificationPreferencesAction(input: {
-  notifyAiDone: boolean;
-  notifyReview: boolean;
-  notifySession: boolean;
-  dailyDigest: boolean;
+  notificationsEnabled: boolean;
 }): Promise<ActionResult> {
   try {
     const context = await requireAuthContext();

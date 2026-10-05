@@ -21,42 +21,16 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Field, FieldSet } from "@/components/dashboard/field";
+import { Field } from "@/components/dashboard/field";
 import { accountSchema, type AccountInput } from "@/lib/validation";
 import {
-  BadgeCheck,
   Compass,
   KeyRound,
   Monitor,
   Moon,
-  ShieldAlert,
   Sun,
-  Trash2,
 } from "lucide-react";
 import type { TeacherProfile } from "@/lib/dummy/types";
-
-const NOTIFICATION_OPTIONS = [
-  {
-    id: "ai_done",
-    label: "Adaptasi AI selesai",
-    hint: "Saat versi adaptasi baru siap Anda review.",
-  },
-  {
-    id: "review",
-    label: "Materi menunggu review",
-    hint: "Saat ada materi yang belum Anda setujui lebih dari dua hari.",
-  },
-  {
-    id: "session",
-    label: "Sesi siswa selesai",
-    hint: "Saat siswa menyelesaikan sesi belajar hari itu.",
-  },
-  {
-    id: "profile",
-    label: "Profil perlu ditinjau",
-    hint: "Saat perubahan profil menandai materi terbit perlu ditinjau ulang.",
-  },
-];
 
 function initialsOf(name: string) {
   return name
@@ -71,14 +45,9 @@ export function SettingsForm({ teacher }: { teacher: TeacherProfile }) {
   const router = useRouter();
   const { resolvedTheme, setTheme } = useTheme();
   const themeMounted = useThemeMounted();
-  const [notifications, setNotifications] = React.useState<Record<string, boolean>>({
-    ai_done: true,
-    review: true,
-    session: false,
-    profile: true,
-    system: true,
-  });
-const [digest, setDigest] = React.useState("harian");
+  const [notificationsEnabled, setNotificationsEnabled] = React.useState(
+    teacher.preferences?.notificationsEnabled ?? true
+  );
   const [restartingTour, setRestartingTour] = React.useState(false);
   const [password, setPassword] = React.useState({ current: "", next: "", confirm: "" });
 
@@ -120,12 +89,7 @@ const [digest, setDigest] = React.useState("harian");
     setSavingPrefs(true);
     try {
       const result = await jalankanAction(() =>
-        updateNotificationPreferencesAction({
-          notifyAiDone: notifications.ai_done,
-          notifyReview: notifications.review,
-          notifySession: notifications.session,
-          dailyDigest: digest === "harian",
-        }),
+        updateNotificationPreferencesAction({ notificationsEnabled })
       );
 
       if (!result.ok) {
@@ -250,56 +214,24 @@ const [digest, setDigest] = React.useState("harian");
 
         <Card className="border-border/80">
           <CardContent className="space-y-4 pt-6">
-            <p className="text-sm font-semibold">Preferensi notifikasi</p>
+            <p className="text-sm font-semibold">Notifikasi</p>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              Semua notifikasi tampil di ikon lonceng pada header dan tidak dikirim
-              ke email. Pilih jenis yang benar-benar Anda pantau.
+              Pemberitahuan muncul di ikon lonceng pada header saat ada aktivitas siswa dan materi.
             </p>
-            <ul className="divide-y">
-              {NOTIFICATION_OPTIONS.map((option) => (
-                <li key={option.id} className="flex items-center justify-between gap-4 py-3">
-                  <div className="min-w-0">
-                    <Label htmlFor={`notif-${option.id}`} className="text-sm font-medium">
-                      {option.label}
-                    </Label>
-                    <p className="mt-0.5 text-xs text-muted-foreground">{option.hint}</p>
-                  </div>
-                  <Switch
-                    id={`notif-${option.id}`}
-                    checked={notifications[option.id] ?? false}
-onCheckedChange={(value) => {
-                      setNotifications((current) => ({
-                        ...current,
-                        [option.id]: value,
-                      }));
-                      setTimeout(() => void savePreferences(), 0);
-                    }}
-                    disabled={savingPrefs}
-                  />
-                </li>
-              ))}
-            </ul>
-
-            <Separator />
-
-            <Field label="Ringkasan harian" htmlFor="digest">
-              <ToggleGroup
-                type="single"
-                value={digest}
-onValueChange={(value) => {
-                  if (!value) return;
-                  setDigest(value);
+            <div className="flex items-center justify-between gap-4">
+              <Label htmlFor="notifications" className="text-sm font-medium">
+                Tampilkan notifikasi
+              </Label>
+              <Switch
+                id="notifications"
+                checked={notificationsEnabled}
+                onCheckedChange={(value) => {
+                  setNotificationsEnabled(value);
                   setTimeout(() => void savePreferences(), 0);
                 }}
-                variant="outline"
-                aria-label="Pilih frekuensi ringkasan notifikasi"
                 disabled={savingPrefs}
-              >
-                <ToggleGroupItem value="harian">Harian</ToggleGroupItem>
-                <ToggleGroupItem value="mingguan">Mingguan</ToggleGroupItem>
-                <ToggleGroupItem value="tidak">Tidak ada</ToggleGroupItem>
-              </ToggleGroup>
-            </Field>
+              />
+            </div>
           </CardContent>
         </Card>
 
@@ -351,40 +283,6 @@ onValueChange={(value) => {
             <Button onClick={savePassword} disabled={savingPassword}>
               {savingPassword ? "Memperbarui..." : "Perbarui kata sandi"}
             </Button>
-
-            <Separator />
-
-            <FieldSet
-              legend="Sesi perangkat"
-              description="Perangkat yang sedang masuk ke akun guru Anda."
-            >
-              <ul className="space-y-2">
-                <li className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3">
-                  <div>
-                    <p className="text-sm font-medium">Chrome di Windows</p>
-                    <p className="text-xs text-muted-foreground">
-                      Yogyakarta, Indonesia - perangkat ini
-                    </p>
-                  </div>
-                  <BadgeCheck className="size-4 text-success" aria-hidden="true" />
-                </li>
-                <li className="flex flex-wrap items-center justify-between gap-2 rounded-lg border p-3">
-                  <div>
-                    <p className="text-sm font-medium">PonselAndroid</p>
-                    <p className="text-xs text-muted-foreground">
-                      Yogyakarta, Indonesia - 2 hari lalu
-                    </p>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => toast.success("Sesi ponsel dikeluarkan")}
-                  >
-                    Keluarkan
-                  </Button>
-                </li>
-              </ul>
-            </FieldSet>
           </CardContent>
         </Card>
       </div>
@@ -469,58 +367,6 @@ onValueChange={(value) => {
             >
               <Compass className="size-4" aria-hidden="true" />
               Jalankan ulang tur
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="border-border/80">
-          <CardContent className="space-y-4 pt-6">
-            <p className="text-sm font-semibold">Data dan privasi</p>
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              Data siswa bersifat rahasia. Bagikan hanya kepada kepala sekolah dan
-              wali kelas yang berwenang.
-            </p>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li>Token QR memuat kunci acak, bukan identitas siswa.</li>
-              <li>Materi adaptasi tidak pernah tampil tanpa persetujuan guru.</li>
-              <li>Riwayat sesi tersimpan untuk menyusun dokumen PPI.</li>
-            </ul>
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() =>
-                toast.success("Permintaan unduh data dikirim", {
-                  description:
-                    "Tautan unduhan berlaku satu hari dan dikirim ke email sekolah Anda.",
-                })
-              }
-            >
-              Unduh data kelas saya
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="border-destructive/40 bg-destructive/5">
-          <CardContent className="space-y-4 pt-6">
-            <div className="flex items-center gap-2">
-              <ShieldAlert className="size-4 text-destructive" aria-hidden="true" />
-              <p className="text-sm font-semibold text-destructive">Zona berbahaya</p>
-            </div>
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              Menonaktifkan akun akan menonaktifkan seluruh token QR. Siswa tidak bisa
-              membuka materi sampai token dibuat ulang.
-            </p>
-            <Button
-              variant="destructive"
-              className="w-full"
-              onClick={() =>
-                toast.error("Permintaan perlu konfirmasi", {
-                  description: "Hubungi administrator sekolah untuk menonaktifkan akun.",
-                })
-              }
-            >
-              <Trash2 />
-              Nonaktifkan akun
             </Button>
           </CardContent>
         </Card>

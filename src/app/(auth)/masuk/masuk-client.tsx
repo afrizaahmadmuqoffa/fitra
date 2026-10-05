@@ -150,7 +150,7 @@ function RegisterForm({ nextPath }: { nextPath: string | null }) {
     setPending(true);
     setFormError(null);
 
-    const { data, error } = await supabase.auth.signUp({
+    const { error } = await supabase.auth.signUp({
       email: values.email,
       password: values.password,
       options: {

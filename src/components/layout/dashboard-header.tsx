@@ -27,7 +27,6 @@ import { useTheme, useThemeMounted } from "@/components/theme-provider";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { SignOutItem } from "@/components/layout/sign-out-item";
 import { DashboardSidebar } from "@/components/layout/dashboard-sidebar";
-import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 import type { AppNotification } from "@/lib/dummy/types";
 import type { TeacherProfile } from "@/lib/dummy/types";
 
@@ -180,8 +179,6 @@ export function DashboardHeader({
           <SignOutItem />
         </DropdownMenuContent>
       </DropdownMenu>
-
-      <MobileBottomNav />
     </header>
   );
 }

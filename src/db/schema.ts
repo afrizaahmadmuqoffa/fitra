@@ -102,10 +102,7 @@ export const profiles = pgTable(
 );
 
 export type ProfilePreferences = {
-  notifyAiDone: boolean;
-  notifyReview: boolean;
-  notifySession: boolean;
-  dailyDigest: boolean;
+  notificationsEnabled: boolean;
 };
 
 /** =========================================================

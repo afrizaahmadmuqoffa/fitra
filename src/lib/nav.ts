@@ -4,7 +4,6 @@ import {
   FileText,
   Gauge,
   GraduationCap,
-  QrCode,
   Settings,
   Users,
   type LucideIcon,
@@ -65,15 +64,6 @@ export const dashboardNav: NavItem[] = [
     icon: Settings,
     description: "Profil guru dan notifikasi",
   },
-];
-
-/** Bottom navigation untuk mobile (5 item teratas + QR). */
-export const mobileNav: NavItem[] = [
-  dashboardNav[0],
-  dashboardNav[1],
-  dashboardNav[3],
-  { label: "QR", href: "/dashboard/kelas", icon: QrCode, description: "QR akses" },
-  dashboardNav[5],
 ];
 
 export const publicNav: { label: string; href: string }[] = [

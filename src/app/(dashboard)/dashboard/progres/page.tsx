@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { getDailyActivity, getProgressSummary } from "@/db/queries";
 import { PageHeader } from "@/components/dashboard/page-header";
+import { EmptyState } from "@/components/dashboard/empty-state";
 import {
   ProgresCharts,
   type DailyPoint,
   type SummaryRow,
 } from "@/components/dashboard/progres/progres-charts";
+import { ChartNoAxesColumn } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Pantauan Progres",
@@ -36,7 +38,15 @@ export default async function ProgressPage() {
         description="Bandingkan siapa yang aktif belajar, berapa lama waktu belajarnya, berapa soal yang berhasil dijawab, dan materi apa yang sudah dibaca."
       />
 
-      <ProgresCharts daily={daily as DailyPoint[]} summary={rows} />
+      {rows.length === 0 ? (
+        <EmptyState
+          icon={ChartNoAxesColumn}
+          title="Belum ada aktivitas"
+          description="Progres siswa akan muncul setelah mereka mulai belajar."
+        />
+      ) : (
+        <ProgresCharts daily={daily as DailyPoint[]} summary={rows} />
+      )}
     </div>
   );
 }

@@ -11,6 +11,7 @@ import {
 import { PageHeader } from "@/components/dashboard/page-header";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { OnboardingWizard } from "@/components/dashboard/onboarding-wizard";
+import { EmptyState } from "@/components/dashboard/empty-state";
 import { ToneBadge, formatDurasi, formatWaktu } from "@/components/dashboard/feedback";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -56,69 +57,79 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-6">
       <OnboardingWizard show={!teacher.onboardingCompleted} />
-      <PageHeader
-        title={`Halo, Bu ${teacher.nickname.split(" ")[0]}`}
-        titleProps={{ "data-tour": "dashboard-title" } as React.HTMLAttributes<HTMLHeadingElement>}
-        description="Ringkasan kelas Anda hari ini: siapa yang belajar, materi apa yang sudah terbit, dan apa yang masih perlu Anda periksa."
-        actions={
-          <>
-            <Button variant="outline" asChild>
-              <Link
-                href="/dashboard/siswa/baru"
-                data-tour="aksi-siswa"
-              >
-                Tambah siswa
-              </Link>
-            </Button>
-            <Button asChild>
-              <Link
-                href="/dashboard/materi/baru"
-                data-tour="aksi-materi"
-              >
-                Unggah materi
-              </Link>
-            </Button>
-          </>
-        }
-      />
+      {students.length === 0 && classes.length === 0 && materials.length === 0 ? (
+        <EmptyState
+          icon={Sparkles}
+          title="Selamat datang di Fitra"
+          description="Tambahkan siswa pertama untuk mulai membuat adaptasi materi sesuai profil belajar mereka."
+        />
+      ) : (
+        <>
+          <PageHeader
+            title={`Halo, Bu ${teacher.nickname.split(" ")[0]}`}
+            titleProps={{ "data-tour": "dashboard-title" } as React.HTMLAttributes<HTMLHeadingElement>}
+            description="Ringkasan kelas Anda hari ini: siapa yang belajar, materi apa yang sudah terbit, dan apa yang masih perlu Anda periksa."
+            actions={
+              <>
+                <Button variant="outline" asChild>
+                  <Link
+                    href="/dashboard/siswa/baru"
+                    data-tour="aksi-siswa"
+                  >
+                    Tambah siswa
+                  </Link>
+                </Button>
+                <Button asChild>
+                  <Link
+                    href="/dashboard/materi/baru"
+                    data-tour="aksi-materi"
+                  >
+                    Unggah materi
+                  </Link>
+                </Button>
+              </>
+            }
+          />
 
-      <section aria-labelledby="ringkasan-statistik" className="space-y-3">
-        <h2 id="ringkasan-statistik" className="sr-only">
-          Ringkasan statistik
-        </h2>
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard
-            label="Total Siswa"
-            value={students.length}
-            hint={`${classes.length} kelas aktif dengan materi adaptif`}
-            icon={Users}
-            href="/dashboard/siswa"
-          />
-          <StatCard
-            label="Kelas Aktif"
-            value={classes.length}
-            hint={`${classes.reduce((a, c) => a + c.studentCount, 0)} kemunculan siswa di kelas`}
-            icon={GraduationCap}
-            href="/dashboard/kelas"
-          />
-          <StatCard
-            label="Materi Terbit"
-            value={published.length}
-            hint={`${materials.length} materi total, ${materials.length - published.length} masih disusun`}
-            icon={BookOpen}
-            href="/dashboard/materi"
-            tour="stat-materi"
-          />
-          <StatCard
-            label="Menunggu Review"
-            value={pendingReview}
-            hint="Adaptasi AI yang belum Anda setujui"
-            icon={Sparkles}
-            href="/dashboard/materi"
-            tour="stat-review"
-          />
-        </div>
-      </section>
+          <section aria-labelledby="ringkasan-statistik" className="space-y-3">
+            <h2 id="ringkasan-statistik" className="sr-only">
+              Ringkasan statistik
+            </h2>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <StatCard
+                label="Total Siswa"
+                value={students.length}
+                hint={`${classes.length} kelas aktif dengan materi adaptif`}
+                icon={Users}
+                href="/dashboard/siswa"
+              />
+              <StatCard
+                label="Kelas Aktif"
+                value={classes.length}
+                hint={`${classes.reduce((a, c) => a + c.studentCount, 0)} kemunculan siswa di kelas`}
+                icon={GraduationCap}
+                href="/dashboard/kelas"
+              />
+              <StatCard
+                label="Materi Terbit"
+                value={published.length}
+                hint={`${materials.length} materi total, ${materials.length - published.length} masih disusun`}
+                icon={BookOpen}
+                href="/dashboard/materi"
+                tour="stat-materi"
+              />
+              <StatCard
+                label="Menunggu Review"
+                value={pendingReview}
+                hint="Adaptasi AI yang belum Anda setujui"
+                icon={Sparkles}
+                href="/dashboard/materi"
+                tour="stat-review"
+              />
+            </div>
+          </section>
+        </>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="border-border/80 lg:col-span-2">

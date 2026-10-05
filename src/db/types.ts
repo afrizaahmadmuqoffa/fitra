@@ -41,6 +41,10 @@ export type VisualAssetStatus =
 export type AudioSpeed = "slow" | "normal" | "fast";
 export type NavStyle = "step" | "scroll" | "tap";
 
+export type ProfilePreferences = {
+  notificationsEnabled: boolean;
+};
+
 export interface TeacherProfile {
   id: string;
   email: string;
@@ -52,6 +56,7 @@ export interface TeacherProfile {
   subjects: string[];
   photoUrl: string;
   onboardingCompleted: boolean;
+  preferences: ProfilePreferences;
 }
 
 export interface Student {

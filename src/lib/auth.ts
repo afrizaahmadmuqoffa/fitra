@@ -64,6 +64,7 @@ function toTeacherProfile(row: typeof profiles.$inferSelect): TeacherProfile {
     subjects: row.subjects ?? [],
     photoUrl: row.avatarUrl ?? "",
     onboardingCompleted: row.onboardingCompleted,
+    preferences: row.preferences ?? { notificationsEnabled: true },
   };
 }
 
@@ -71,10 +72,7 @@ export async function getTeacherPreferences(): Promise<ProfilePreferences> {
   const context = await getAuthContext();
   if (!context) {
     return {
-      notifyAiDone: true,
-      notifyReview: true,
-      notifySession: true,
-      dailyDigest: false,
+      notificationsEnabled: true,
     };
   }
   const row = await withRlsDb(context.claims, async (tx) => {
@@ -87,10 +85,7 @@ export async function getTeacherPreferences(): Promise<ProfilePreferences> {
   });
   return (
     row?.preferences ?? {
-      notifyAiDone: true,
-      notifyReview: true,
-      notifySession: true,
-      dailyDigest: false,
+      notificationsEnabled: true,
     }
   );
 }

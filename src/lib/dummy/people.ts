@@ -11,6 +11,7 @@ export const teacher: TeacherProfile = {
   subjects: ["Matematika", "IPA", "Bahasa Indonesia"],
   photoUrl: "https://picsum.photos/seed/fitra-guru-sri-wahyuni/240/240",
   onboardingCompleted: true,
+  preferences: { notificationsEnabled: true },
 };
 
 export const students: Student[] = [

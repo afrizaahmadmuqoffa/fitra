@@ -6,9 +6,10 @@ import {
   getMaterials,
 } from "@/db/queries";
 import { PageHeader } from "@/components/dashboard/page-header";
+import { EmptyState } from "@/components/dashboard/empty-state";
 import { Button } from "@/components/ui/button";
 import { MateriBrowser, type MateriRow } from "@/components/dashboard/materi/materi-browser";
-import { Upload } from "lucide-react";
+import { BookOpen, Upload } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Daftar Materi",
@@ -56,7 +57,15 @@ export default async function MaterialsPage() {
         }
       />
 
-      <MateriBrowser rows={rows} />
+      {rows.length === 0 ? (
+        <EmptyState
+          icon={BookOpen}
+          title="Belum ada materi"
+          description="Unggah materi pertama untuk mulai membuat adaptasi otomatis."
+        />
+      ) : (
+        <MateriBrowser rows={rows} />
+      )}
     </div>
   );
 }
