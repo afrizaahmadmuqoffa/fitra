@@ -259,6 +259,7 @@
    tergantung urutan muat modul. */
 .driver-popover.fitra-tour {
   all: initial !important;
+  position: fixed !important;
   z-index: 9999 !important;
   font-family: var(--font-sans) !important;
   box-sizing: border-box !important;
@@ -353,4 +354,10 @@
 /* Panah popover mengikuti warna kartu popover. */
 .driver-popover.fitra-tour .driver-popover-arrow {
   border-color: var(--popover) !important;
+}
+
+/* Overlay backdrop harus di bawah popover tapi di atas konten lain. */
+.driver-overlay {
+  position: fixed !important;
+  z-index: 9998 !important;
 }
