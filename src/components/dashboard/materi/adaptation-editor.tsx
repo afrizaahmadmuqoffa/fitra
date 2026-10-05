@@ -181,7 +181,7 @@ export function AdaptationEditor({
     setBusy(key);
     try {
       const hasil = await jalankanAction(() =>
-        generateVisualAction({ adaptationId, sectionIndex }),
+        generateVisualAction({ adaptationId, sectionIndex, skipIfReady: false }),
       );
       if (!hasil.ok) {
         toast.error("Ilustrasi belum bisa dibuat", { description: hasil.message });

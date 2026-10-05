@@ -51,6 +51,13 @@ const adaptasiInput = z.object({
 const visualInput = z.object({
   adaptationId: z.string().uuid("Adaptasi tidak dikenali."),
   sectionIndex: z.number().int().min(0, "Bagian tidak dikenali."),
+  /**
+   * Saat `true` (bawaan) permintaan dilewati kalau ilustrasi bagian ini
+   * sudah jadi, sehingga pemanggilan otomatis tidak memboroskan kuota.
+   * Guru yang sengaja menekan "Buat ulang ilustrasi" mengirim `false`
+   * supaya gambar baru benar-benar dibuat.
+   */
+  skipIfReady: z.boolean().default(true),
 });
 
 const assetInput = z.object({
@@ -433,7 +440,7 @@ export async function generateVisualAction(input: unknown): Promise<ActionResult
   if (!parsed.success) {
     return gagal(parsed.error.issues[0]?.message ?? "Bagian tidak dikenali.");
   }
-  const { adaptationId, sectionIndex } = parsed.data;
+  const { adaptationId, sectionIndex, skipIfReady } = parsed.data;
 
   try {
     const context = await requireAuthContext();
@@ -478,7 +485,7 @@ export async function generateVisualAction(input: unknown): Promise<ActionResult
 
     const { aset, judulMateri } = data;
 
-    if (aset.status === "ready" && aset.storagePath) {
+    if (skipIfReady && aset.status === "ready" && aset.storagePath) {
       return { ok: true, message: "Ilustrasi bagian ini sudah ada." };
     }
 
@@ -514,6 +521,24 @@ export async function generateVisualAction(input: unknown): Promise<ActionResult
           })
           .where(eq(visualAssets.id, aset.id));
       });
+
+      // Berkas lama harus dibuang karena setiap permintaan sudah memakai
+      // jalur sendiri. Kalau tidak, setiap "buat ulang" menyisakan satu
+      // objek yatim di bucket.
+      if (aset.storagePath && aset.storagePath !== hasil.storagePath) {
+        const { createSupabaseServiceClient } = await import(
+          "@/lib/supabase/service"
+        );
+        const { error: galatHapus } = await createSupabaseServiceClient()
+          .storage.from(BUCKET_VISUAL)
+          .remove([aset.storagePath]);
+        if (galatHapus) {
+          debug.peringatan("berkas gambar lama gagal dihapus", {
+            jalur: aset.storagePath,
+            galat: galatHapus.message,
+          });
+        }
+      }
 
       revalidatePath(`/dashboard/materi/${adaptationId}/adaptasi`);
       return { ok: true, message: "Ilustrasi dibuat dan tersimpan." };

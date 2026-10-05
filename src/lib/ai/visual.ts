@@ -104,6 +104,12 @@ type OpsiBuatVisual = {
   prompt: string;
   adaptationId: string;
   sectionIndex: number;
+  /**
+   * Penanda unik per permintaan. Prompt yang sama tetap menghasilkan berkas
+   * berbeda, jadi "buat ulang" benar-benar mengganti gambar dan bukan
+   * hanya menimpa berkas lama yang masih tersimpan di cache browser.
+   */
+  nonce?: string;
   /** Lebar gambar yang diminta. */
   width?: number;
   height?: number;
@@ -144,9 +150,15 @@ export async function buatVisual(opsi: OpsiBuatVisual): Promise<HasilVisual> {
     section: opsi.sectionIndex,
   });
 
-  // Default 1024x768 (4:3) optimal untuk educational content
+  // Default 1024x768 (4:3) paling pas untuk diagram edukatif.
   const width = opsi.width ?? 1024;
   const height = opsi.height ?? 768;
+
+  // Setiap permintaan memakai akhiran jalur sendiri supaya tombol "buat
+  // ulang" benar-benar menghasilkan berkas baru. Kalau jalurnya hanya
+  // dari sidik prompt, signed URL-nya tetap sama sehingga browser
+  // menyajikan gambar lama dari cache.
+  const unik = opsi.nonce ?? crypto.randomUUID().slice(0, 8);
 
   const urlGambar = await mintaUrlGambar({ prompt, apiKey, width, height });
 
@@ -163,7 +175,7 @@ export async function buatVisual(opsi: OpsiBuatVisual): Promise<HasilVisual> {
     );
   }
 
-  const storagePath = `adaptasi/${opsi.adaptationId}/bagian-${opsi.sectionIndex}-${sidik.slice(0, 8)}.${tipe.ekstensi}`;
+  const storagePath = `adaptasi/${opsi.adaptationId}/bagian-${opsi.sectionIndex}-${sidik.slice(0, 8)}-${unik}.${tipe.ekstensi}`;
 
   const supabase = createSupabaseServiceClient();
   const { error: galatUnggah } = await supabase.storage
