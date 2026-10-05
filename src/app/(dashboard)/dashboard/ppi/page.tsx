@@ -5,7 +5,8 @@ import {
   getStudent,
 } from "@/db/queries";
 import { PageHeader } from "@/components/dashboard/page-header";
-import { EmptyState, ToneBadge, formatTanggal } from "@/components/dashboard/feedback";
+import { EmptyState } from "@/components/dashboard/empty-state";
+import { ToneBadge, formatTanggal } from "@/components/dashboard/feedback";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -60,12 +61,7 @@ export default async function PpiListPage() {
         <EmptyState
           icon={FileText}
           title="Belum ada dokumen PPI"
-          description="Mulai dengan membuat PPI untuk satu siswa. Isian tujuan pembelajaran, layanan, dan evaluasi akan terisi otomatis dari profil serta progres terakhir."
-          action={
-            <Button asChild>
-              <Link href="/dashboard/ppi/baru">Buat PPI pertama</Link>
-            </Button>
-          }
+          description="Susun Program Individu Plansional dari profil dan progres siswa. Isian tujuan pembelajaran, layanan, dan evaluasi terisi otomatis dari data yang sudah ada."
         />
       ) : (
         <Card className="border-border/80">

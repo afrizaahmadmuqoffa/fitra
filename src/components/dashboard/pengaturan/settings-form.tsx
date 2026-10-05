@@ -26,6 +26,7 @@ import { accountSchema, type AccountInput } from "@/lib/validation";
 import {
   Compass,
   KeyRound,
+  Loader2,
   Monitor,
   Moon,
   Sun,
@@ -365,8 +366,12 @@ export function SettingsForm({ teacher }: { teacher: TeacherProfile }) {
                 }
               }}
             >
-              <Compass className="size-4" aria-hidden="true" />
-              Jalankan ulang tur
+              {restartingTour ? (
+                <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <Compass className="size-4" aria-hidden="true" />
+              )}
+              {restartingTour ? "Menyiapkan tur" : "Jalankan ulang tur"}
             </Button>
           </CardContent>
         </Card>
