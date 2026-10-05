@@ -610,3 +610,240 @@ export async function removeVisualAction(input: unknown): Promise<ActionResult> 
     return gagal("Gagal menghapus ilustrasi.");
   }
 }
+
+// =========================================================
+// UPLAH ILUSTRASI MANUAL
+//
+// AI hanya alat bantu. Guru boleh mengunggah gambarnya sendiri tanpa
+// menunggumachine. Alurnya meniru unggah materi: browser meminta tiket,
+// lalu mengunggah langsung ke Supabase Storage memakai tiket itu. Berkas
+// tidak melewati Next.js sehingga batas 1 MB pada Server Action tidak
+// berlaku di sini.
+// =========================================================
+
+/** Bucket privat tempat semua ilustrasi disimpan. */
+const BUCKET_VISUAL = "visual-assets";
+
+/** PRD Bab 6B: ilustrasi 10 MB, lebih kecil dari bahan ajar 20 MB. */
+const MAKS_BYTES_VISUAL = 10 * 1024 * 1024;
+
+const TIPE_VISUAL: Record<string, string> = {
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  webp: "image/webp",
+};
+
+const tiketVisualInput = z.object({
+  adaptationId: z.string().uuid("Adaptasi tidak dikenali."),
+  sectionIndex: z.number().int().min(0, "Bagian tidak dikenali."),
+  fileName: z.string().min(3, "Nama berkas terlalu pendek.").max(180),
+  sizeBytes: z.number().int().positive("Ukuran berkas tidak valid."),
+});
+
+/** Buang karakter yang tidak aman untuk nama berkas di storage. */
+function namaAman(nama: string): string {
+  return nama
+    .normalize("NFKD")
+    .replace(/[^\w.\-]+/g, "-")
+    .replace(/-{2,}/g, "-")
+    .slice(-80);
+}
+
+/**
+ * Minta tiket unggah satu ilustrasi.
+ *
+ * Bucket dipatok di server supaya guru tidak bisa mendapat tiket untuk
+ * bucket lain. Path memakai id adaptasi dan UUID supaya tidak bisa ditebak.
+ */
+export async function createVisualUploadTicketAction(
+  input: unknown,
+): Promise<ActionResult & { tiket?: { path: string; token: string }; contentType?: string }> {
+  const parsed = tiketVisualInput.safeParse(input);
+  if (!parsed.success) {
+    return gagal(parsed.error.issues[0]?.message ?? "Data tidak valid.");
+  }
+
+  const { adaptationId, sectionIndex, fileName, sizeBytes } = parsed.data;
+
+  const ekstensi = fileName.split(".").pop()?.toLowerCase() ?? "";
+  const contentType = TIPE_VISUAL[ekstensi];
+  if (!contentType) {
+    return gagal("Format gambar harus PNG, JPEG, atau WebP.");
+  }
+  if (sizeBytes > MAKS_BYTES_VISUAL) {
+    return gagal("Ukuran gambar melebihi 10 MB.");
+  }
+
+  try {
+    const context = await requireAuthContext();
+
+    // RLS membatasi baris yang terlihat, jadiAdaptasi milik guru lain
+    // tidak akan ditemukan di sini dan tiket tidak terbit.
+    const [Adaptasi] = await withRlsDb(context.claims, async (tx) =>
+      tx
+        .select({ materialId: materialAdaptations.materialId })
+        .from(materialAdaptations)
+        .where(eq(materialAdaptations.id, adaptationId))
+        .limit(1),
+    );
+    if (!Adaptasi) return gagal("Adaptasi tidak ditemukan.");
+
+    const path = `adaptasi/${adaptationId}/manual-${crypto.randomUUID().slice(0, 8)}-${namaAman(fileName)}`;
+
+    const { createSupabaseServiceClient } = await import("@/lib/supabase/service");
+    const supabase = createSupabaseServiceClient();
+    const { data, error } = await supabase.storage
+      .from(BUCKET_VISUAL)
+      .createSignedUploadUrl(path, { upsert: false });
+
+    if (error || !data?.token) {
+      debug.galat("gagal membuat tiket unggah ilustrasi", {
+        guru: context.userId,
+        adaptasi: adaptationId,
+        bagian: sectionIndex,
+        galat: error?.message ?? "tanpa token",
+      });
+      return gagal("Tiket unggah gagal dibuat. Coba lagi beberapa saat lagi.");
+    }
+
+    debug.info("tiket unggah ilustrasi diterbitkan", {
+      guru: context.userId,
+      bagian: sectionIndex,
+      ukuran_kb: Math.round(sizeBytes / 1024),
+    });
+
+    return {
+      ok: true,
+      message: "Tiket unggah siap.",
+      tiket: { path: data.path, token: data.token },
+      contentType,
+    };
+  } catch (error) {
+    catatGalat("createVisualUploadTicket", error);
+    return gagal("Tiket unggah gagal dibuat. Coba lagi beberapa saat lagi.");
+  }
+}
+
+const konfirmasiVisualInput = z.object({
+  adaptationId: z.string().uuid("Adaptasi tidak dikenali."),
+  sectionIndex: z.number().int().min(0, "Bagian tidak dikenali."),
+  storagePath: z.string().min(10).max(300),
+});
+
+/**
+ * Merekam hasil unggah manual ke tabel visual_assets.
+ *
+ * Dua kasus ditangani: baris sudah ada karena AI/request sebelumnya
+ * menyumbang ilustrasi, atau belum ada sama sekali karena AI tidak
+ * menyarankan visual untuk bagian ini. Keduanya berakhir dengan satu
+ * baris `ready` supaya guru tetap punya tempat untuk mengedit alt text.
+ */
+export async function confirmVisualUploadAction(
+  input: unknown,
+): Promise<ActionResult & { imageUrl?: string; assetId?: string }> {
+  const parsed = konfirmasiVisualInput.safeParse(input);
+  if (!parsed.success) {
+    return gagal(parsed.error.issues[0]?.message ?? "Data tidak valid.");
+  }
+
+  const { adaptationId, sectionIndex, storagePath } = parsed.data;
+
+  // Path wajib berada di subtree adaptasi yang sama supaya guru tidak
+  // bisa menunjuk berkas milik adaptasi lain.
+  if (!storagePath.startsWith(`adaptasi/${adaptationId}/`)) {
+    return gagal("Jalur berkas tidak valid.");
+  }
+
+  try {
+    const context = await requireAuthContext();
+    const { createSupabaseServiceClient } = await import("@/lib/supabase/service");
+    const supabase = createSupabaseServiceClient();
+
+    const hasil = await withRlsDb(context.claims, async (tx) => {
+      const [adaptasi] = await tx
+        .select({ materialId: materialAdaptations.materialId })
+        .from(materialAdaptations)
+        .where(eq(materialAdaptations.id, adaptationId))
+        .limit(1);
+      if (!adaptasi) return null;
+
+      const [aset] = await tx
+        .select({ id: visualAssets.id, storagePath: visualAssets.storagePath })
+        .from(visualAssets)
+        .where(
+          and(
+            eq(visualAssets.materialAdaptationId, adaptationId),
+            eq(visualAssets.sectionIndex, sectionIndex),
+          ),
+        )
+        .limit(1);
+
+      const mimeType =
+        storagePath.toLowerCase().endsWith(".webp")
+          ? "image/webp"
+          : storagePath.toLowerCase().endsWith(".png")
+            ? "image/png"
+            : "image/jpeg";
+
+      const now = new Date().toISOString();
+      const namaBerkas = storagePath.split("/").pop() ?? storagePath;
+
+      if (aset) {
+        // Berkas lama dilepas supaya tidak menggantung di bucket.
+        if (aset.storagePath && aset.storagePath !== storagePath) {
+          await supabase.storage.from(BUCKET_VISUAL).remove([aset.storagePath]);
+        }
+        await tx
+          .update(visualAssets)
+          .set({
+            status: "ready",
+            storagePath,
+            mimeType,
+            model: "unggahan-guru",
+            prompt: `Diunggah guru: ${namaBerkas}`,
+            sourceHash: null,
+            updatedAt: now,
+          })
+          .where(eq(visualAssets.id, aset.id));
+        return { assetId: aset.id, materialId: adaptasi.materialId };
+      }
+
+      const [baru] = await tx
+        .insert(visualAssets)
+        .values({
+          materialAdaptationId: adaptationId,
+          sectionIndex,
+          status: "ready",
+          storagePath,
+          mimeType,
+          model: "unggahan-guru",
+          prompt: `Diunggah guru: ${namaBerkas}`,
+          altText: `Ilustrasi bagian ${sectionIndex + 1} diunggah guru.`,
+        })
+        .returning({ id: visualAssets.id });
+      return { assetId: baru.id, materialId: adaptasi.materialId };
+    });
+
+    if (!hasil) return gagal("Adaptasi tidak ditemukan.");
+
+    const { data: url, error: galatUrl } = await supabase.storage
+      .from(BUCKET_VISUAL)
+      .createSignedUrl(storagePath, 3600);
+
+    if (galatUrl || !url?.signedUrl) {
+      return gagal("Gambar tersimpan tetapi pratinjau gagal dibuat. Muat ulang halaman.");
+    }
+
+    revalidatePath(`/dashboard/materi/${hasil.materialId}/adaptasi`);
+    return {
+      ok: true,
+      message: "Ilustrasi diunggah.",
+      imageUrl: url.signedUrl,
+      assetId: hasil.assetId,
+    };
+  } catch (error) {
+    catatGalat("confirmVisualUpload", error);
+    return gagal("Gagal menyimpan ilustrasi.");
+  }
+}

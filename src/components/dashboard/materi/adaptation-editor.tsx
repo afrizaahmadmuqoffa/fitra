@@ -10,11 +10,14 @@ import {
   saveAdaptationAction,
 } from "@/actions/materials";
 import {
+  confirmVisualUploadAction,
+  createVisualUploadTicketAction,
   generateVisualAction,
   regenerateAdaptationAction,
   removeVisualAction,
 } from "@/actions/ai";
 import { jalankanAction } from "@/lib/action-helpers";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -106,6 +109,25 @@ export function AdaptationEditor({
   const [editing, setEditing] = React.useState(false);
   const [previewOpen, setPreviewOpen] = React.useState(false);
   const [busy, setBusy] = React.useState<string | null>(null);
+  const [uploading, setUploading] = React.useState<number | null>(null);
+
+  // `router.refresh()` memuat ulang `initialAssets` dari database, tapi
+  // `useState` hanya memakai nilainya saat komponen pertama kali mount.
+  // Tanpa penyesuaian ini, ilustrasi yang baru saja dibuat AI tetap tampil
+  // sebagai "Sedang dibuat..." sampai guru memuat ulang halaman.
+  //
+  // Penyesuaian dilakukan saat render, bukan di dalam efek: `useState`
+  // boleh disetel ulang saat render kalau nilainya bergantung pada props,
+  // dan cara ini menghindari pemanggilan setState di dalam efek yang
+  // dilarang oleh aturan lint.
+  const tandaAssets = assets
+    .map((item) => `${item.id}:${item.status}:${item.imageUrl ?? ""}`)
+    .join("|");
+  const [tandaServer, setTandaServer] = React.useState(tandaAssets);
+  if (tandaServer !== tandaAssets) {
+    setTandaServer(tandaAssets);
+    setAssets(initialAssets);
+  }
 
   function patchSection(index: number, patch: Partial<AdaptedSection>) {
     setSections((current) =>
@@ -201,19 +223,73 @@ export function AdaptationEditor({
     }
   }
 
-  function replaceVisual(sectionIndex: number, file: File | undefined) {
+  async function replaceVisual(sectionIndex: number, file: File | undefined) {
     if (!file) return;
-    const url = URL.createObjectURL(file);
-    setAssets((current) =>
-      current.map((asset) =>
-        asset.sectionIndex === sectionIndex
-          ? { ...asset, status: "ready", imageUrl: url, prompt: `Diunggah guru: ${file.name}` }
-          : asset,
-      ),
-    );
-    toast.success("Ilustrasi diganti", {
-      description: `${file.name} sekarang dipakai pada bagian ini.`,
-    });
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Ukuran gambar melebihi 10 MB", {
+        description: "Kompres gambar dulu, lalu coba lagi.",
+      });
+      return;
+    }
+
+    setUploading(sectionIndex);
+    try {
+      // Tahap 1: minta tiket. Bucket, tipe berkas, dan batas ukuran
+      // dicek di server supaya tidak bisa dilewati dari browser.
+      const tiket = await jalankanAction(() =>
+        createVisualUploadTicketAction({
+          adaptationId,
+          sectionIndex,
+          fileName: file.name,
+          sizeBytes: file.size,
+        }),
+      );
+
+      if (!tiket.ok || !tiket.tiket || !tiket.contentType) {
+        toast.error("Gagal mempersiapkan upload", { description: tiket.message });
+        return;
+      }
+      const { path: storagePath, token } = tiket.tiket;
+      const contentType = tiket.contentType;
+
+      // Tahap 2: unggah langsung ke Supabase Storage. Berkas tidak
+      // melewati Next.js sehingga batas 1 MB pada Server Action tidak
+      // berlaku di sini.
+      const supabase = createSupabaseBrowserClient();
+      const { error: galatUnggah } = await supabase.storage
+        .from("visual-assets")
+        .uploadToSignedUrl(storagePath, token, file, {
+          contentType,
+          upsert: false,
+        });
+
+      if (galatUnggah) {
+        toast.error("Gagal mengunggah gambar", { description: galatUnggah.message });
+        return;
+      }
+
+      // Tahap 3: catat di database dan minta URL pratinjau.
+      const hasil = await jalankanAction(() =>
+        confirmVisualUploadAction({
+          adaptationId,
+          sectionIndex,
+          storagePath,
+        }),
+      );
+
+      if (!hasil.ok || !hasil.imageUrl) {
+        toast.error("Gagal menyimpan ilustrasi", { description: hasil.message });
+        return;
+      }
+
+      router.refresh();
+      toast.success("Ilustrasi diunggah", {
+        description: "Gambar tersimpan dan siap dipakai siswa.",
+      });
+    } finally {
+      setUploading(null);
+    }
   }
 
   function updateAltText(sectionIndex: number, altText: string) {
@@ -619,7 +695,7 @@ export function AdaptationEditor({
                           )}
                         </div>
 
-                        {asset ? (
+{asset ? (
                           <>
                             <div
                               role="img"
@@ -640,8 +716,8 @@ export function AdaptationEditor({
                                     ? "Ilustrasi gagal dibuat. Buat ulang atau unggah gambar sendiri."
                                     : asset.status === "rejected"
                                       ? "Ilustrasi ditolak. Klik tombol di bawah untuk buat ulang."
-                                    : asset.status === "pending"
-                                      ? "Ilustrasi belum dibuat. Tekan 'Buat ilustrasi' di bawah untuk meminta gambar ke AI."
+                                      : asset.status === "pending"
+                                        ? "Belum ada gambar. Minta AI membuatkannya atau unggah gambar sendiri."
                                         : asset.status === "generating"
                                           ? "AI sedang membuat ilustrasi..."
                                           : "Menunggu ilustrasi"}
@@ -668,65 +744,87 @@ export function AdaptationEditor({
                                 tunanetra.
                               </p>
                             </div>
-
-                            <div className="no-print flex flex-wrap gap-2">
-                              <Button
-                                variant={asset.status === "pending" ? "default" : "outline"}
-                                size="sm"
-                                disabled={busy !== null || asset.status === "generating"}
-                                onClick={() => regenerateVisual(sectionIndex)}
-                              >
-                                {busy === `regen-${sectionIndex}` ||
-                                asset.status === "generating" ? (
-                                  <Loader2 className="animate-spin" />
-                                ) : asset.status === "pending" ? (
-                                  <Sparkles />
-                                ) : (
-                                  <RefreshCw />
-                                )}
-                                {busy === `regen-${sectionIndex}` || asset.status === "generating"
-                                  ? "Sedang dibuat..."
-                                  : asset.status === "pending"
-                                    ? "Buat ilustrasi"
-                                    : "Buat ulang ilustrasi"}
-                              </Button>
-                            </div>
-
-                            {editing ? (
-                              <div className="no-print flex flex-wrap gap-2">
-                                <Label
-                                  htmlFor={`upload-${sectionIndex}`}
-                                  className="inline-flex h-7 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-border bg-background px-2.5 text-[0.8rem] font-medium transition-colors hover:bg-muted focus-within:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                                >
-                                  <ImagePlus />
-                                  Ganti ilustrasi
-                                </Label>
-                                <input
-                                  id={`upload-${sectionIndex}`}
-                                  type="file"
-                                  accept="image/png,image/jpeg,image/webp"
-                                  className="sr-only"
-                                  onChange={(event) =>
-                                    replaceVisual(sectionIndex, event.target.files?.[0])
-                                  }
-                                />
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => hapusVisual(sectionIndex)}
-                                >
-                                  <Trash2 />
-                                  Hapus
-                                </Button>
-                              </div>
-                            ) : null}
                           </>
                         ) : (
                           <p className="rounded-lg bg-muted/60 p-4 text-sm leading-relaxed text-muted-foreground">
-                            Bagian ini tidak membutuhkan ilustrasi. Tambahkan bila siswa
-                            lebih membantu melihat gambar.
+                            AI tidak menyarankan ilustrasi untuk bagian ini. Tambahkan
+                            manual bila siswa lebih terbantu melihat gambarnya.
                           </p>
                         )}
+
+                        {editing ? (
+                          <div className="no-print flex flex-wrap items-center gap-2">
+                            {asset ? (
+                              <>
+                                <Button
+                                  variant={asset.status === "pending" ? "default" : "outline"}
+                                  size="sm"
+                                  disabled={
+                                    busy !== null ||
+                                    uploading !== null ||
+                                    asset.status === "generating"
+                                  }
+                                  onClick={() => regenerateVisual(sectionIndex)}
+                                >
+                                  {busy === `regen-${sectionIndex}` ||
+                                  asset.status === "generating" ? (
+                                    <Loader2 className="animate-spin" aria-hidden />
+                                  ) : asset.status === "pending" ? (
+                                    <Sparkles aria-hidden />
+                                  ) : (
+                                    <RefreshCw aria-hidden />
+                                  )}
+                                  {busy === `regen-${sectionIndex}` || asset.status === "generating"
+                                    ? "Sedang dibuat..."
+                                    : asset.status === "pending"
+                                      ? "Buat ilustrasi"
+                                      : "Buat ulang ilustrasi"}
+                                </Button>
+
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  disabled={busy !== null || uploading !== null}
+                                  onClick={() => hapusVisual(sectionIndex)}
+                                >
+                                  <Trash2 aria-hidden />
+                                  Hapus
+                                </Button>
+                              </>
+                            ) : null}
+
+                            <Label
+                              htmlFor={`upload-${sectionIndex}`}
+                              className={cn(
+                                "inline-flex h-7 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-border bg-background px-2.5 text-[0.8rem] font-medium transition-colors hover:bg-muted focus-within:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+                                (uploading !== null || busy !== null) &&
+                                  "pointer-events-none opacity-50",
+                              )}
+                            >
+                              {uploading === sectionIndex ? (
+                                <Loader2 className="animate-spin" aria-hidden />
+                              ) : (
+                                <ImagePlus aria-hidden />
+                              )}
+                              {uploading === sectionIndex
+                                ? "Mengunggah..."
+                                : asset
+                                  ? "Ganti ilustrasi"
+                                  : "Upload ilustrasi"}
+                            </Label>
+                            <input
+                              id={`upload-${sectionIndex}`}
+                              type="file"
+                              accept="image/png,image/jpeg,image/webp"
+                              className="sr-only"
+                              disabled={uploading !== null || busy !== null}
+                              onChange={(event) => {
+                                replaceVisual(sectionIndex, event.target.files?.[0]);
+                                event.target.value = "";
+                              }}
+                            />
+                          </div>
+                        ) : null}
                       </CardContent>
                     </Card>
 
