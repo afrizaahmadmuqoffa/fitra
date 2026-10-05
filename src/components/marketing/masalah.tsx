@@ -33,7 +33,7 @@ export function Masalah() {
           </p>
         </Reveal>
 
-        <div className="mt-12 grid gap-x-10 gap-y-10 md:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-12 grid gap-x-10 gap-y-10 md:grid-cols-2 lg:grid-cols-3">
           {problems.map((item, i) => {
             const Icon = item.icon;
             return (
