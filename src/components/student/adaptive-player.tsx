@@ -53,8 +53,21 @@ export type PlayerModes = {
 };
 
 const TAP = "min-h-[var(--spacing-student-tap)]";
-/** Fallback pacing when the browser does not report word boundaries. */
-const WORDS_PER_SECOND = 2.2;
+/**
+ * Kecepatan cadangan ketika peramban tidak memberi tahu posisi kata.
+ *
+ * Sengaja lebih lambat daripada laju bicara normal. Kalau cadangan terlalu
+ * cepat, sorotan mendahului suara dan siswa membaca kata yang belum
+ * diucapkan. Tertinggal sedikit jauh lebih ringan daripada melompat
+ * bolak-balik.
+ */
+const WORDS_PER_SECOND = 1.9;
+/**
+ * Berapa lama menunggu event batas kata sebelum menganggap peramban ini
+ * sama sekali tidak mengirimkannya. Batas pertama biasanya datang di bawah
+ * 300 ms, jadi 600 ms cukup untuk memutuskan tanpa menahan lama di telepon.
+ */
+const JEDA_BOUNDARY_MS = 600;
 /** Spoken ordinals so audio can be matched to the option buttons on screen. */
 const KATA_PENANDA = ["pertama", "kedua", "ketiga", "keempat", "kelima"];
 
@@ -168,6 +181,24 @@ export function AdaptivePlayer({
   const [scanEnabled, setScanEnabled] = React.useState(false);
   const [scanIndex, setScanIndex] = React.useState(0);
 
+  /**
+   * Lacakan sinkronisasi sorotan dengan suara.
+   *
+   * Tiga hal disimpan di ref, bukan state, karena semuanya hanya dibaca di
+   * dalam loop timer dan tidak boleh memicu render ulang.
+   *
+* `modeBoundary` bernilai true kalau peramban ternyata mengirim batas
+   * kata. Selama nilainya true, timer berhenti sepenuhnya dan sorotan
+   * hanya mengikuti suara.
+   * `batasTerakhir` menyimpan waktu event batas terakhir, dipakai menghitung
+   * apakah peramban diam atau masih mengirim.
+   * `mulaiSuara` menyimpan waktu audio mulai, jadi posisi cadangan dihitung
+   * dari waktu berjalan, bukan dari jumlah tick.
+   */
+  const modeBoundary = React.useRef(false);
+  const batasTerakhir = React.useRef(0);
+  const mulaiSuara = React.useRef(0);
+
   // Pencatatan sesi belajar (PRD 6.F dan 3.5). Sesi dibuka sekali saat materi
   // dibuka, setiap jawaban dicatat per bagian, lalu sesi ditutup saat siswa
   // selesai. Kegagalan pencatatan tidak boleh mengganggu belajar, jadi
@@ -213,7 +244,7 @@ export function AdaptivePlayer({
     return Math.min(Math.max(selesai, 0), Math.max(total - 1, 0));
   }
 
-  /** Stop audio and reset the highlight without touching answer state. */
+  /** Hentikan audio dan kembalikan sorotan ke awal tanpa mengubah jawaban. */
   function stopSpeaking() {
     if (bisaSuara) {
       window.speechSynthesis.cancel();
@@ -221,12 +252,24 @@ export function AdaptivePlayer({
     setPlaying(false);
     setPaused(false);
     setWordIndex(0);
+    modeBoundary.current = false;
+    mulaiSuara.current = 0;
   }
 
   /**
-   * Speaks a script with the browser engine and follows its word boundary
-   * events, which is what PRD 6.G asks for. Timer-based highlight runs
-   * continuously as baseline; boundary events override position when available.
+   * Membacakan naskah dan menyorot kata yang sedang diucapkan.
+   *
+   * Dua sumber posisi kata dipakai bergantian, bukan berebut:
+   *
+   * Event batas kata adalah sumber yang benar. Begitu peramban mengirim
+   * satu saja, `modeBoundary` menyala dan timer langsung angkat tangan,
+   * sehingga sorotan tidak pernah mendahului suara lalu melompat ke
+   * belakang saat event berikutnya tiba.
+   *
+   * Timer hanya bekerja sebagai cadangan, untuk peramban yang memang tidak
+   * pernah mengirim batas kata seperti Google TTS di Android. Ia menunggu
+   * masa tenggang lebih dulu supaya peramban yang lambat tidak kelihatan
+   * memakai timer sejak awal.
    */
   function speak(target: Naskah) {
     const script = target === "soal" ? scriptSoal : scriptMateri;
@@ -236,6 +279,9 @@ export function AdaptivePlayer({
     setWordIndex(0);
     setPlaying(true);
     setPaused(false);
+    modeBoundary.current = false;
+    mulaiSuara.current = performance.now();
+    batasTerakhir.current = performance.now();
 
     if (!bisaSuara) {
       return;
@@ -247,27 +293,30 @@ export function AdaptivePlayer({
     const utter = new SpeechSynthesisUtterance(script);
     utter.lang = "id-ID";
     utter.rate = speed;
-    
-    let lastBoundaryTime = 0;
-    const boundaryDebounceMs = 50;
-    
+
     utter.onboundary = (event) => {
-      if (event.name !== "word") return;
+      // Batas kalimat terlalu kasar untuk disorot, jadi diabaikan.
+      if (event.name === "sentence") return;
+      // Sebagian mesin TTS di telepon mengirim batas kata dengan `name`
+      // yang kosong atau tidak ada sama sekali. Menolak event seperti itu
+      // membuat sorotan di Android tidak pernah bergerak sama sekali.
+      if (event.name && event.name !== "word") return;
       if (typeof event.charIndex !== "number") return;
-      
-      const now = Date.now();
-      if (now - lastBoundaryTime < boundaryDebounceMs) return;
-      lastBoundaryTime = now;
-      
-      const position = posisiDariCharIndex(script, event.charIndex);
-      setWordIndex(Math.max(0, position));
+
+      modeBoundary.current = true;
+      batasTerakhir.current = performance.now();
+      setWordIndex(posisiDariCharIndex(script, event.charIndex));
     };
     utter.onend = () => {
+      modeBoundary.current = false;
+      mulaiSuara.current = 0;
       setPlaying(false);
       setPaused(false);
       setWordIndex(0);
     };
     utter.onerror = () => {
+      modeBoundary.current = false;
+      mulaiSuara.current = 0;
       setPlaying(false);
       setPaused(false);
     };
@@ -281,15 +330,23 @@ export function AdaptivePlayer({
   }
 
   /**
-   * Play, pause, or resume depending on the current state.
+   * Mulai, jeda, atau lanjutkan sesuai keadaan sekarang.
    *
-   * Without speechSynthesis support this falls back to the highlight timer so
-   * the button still does something visible.
+   * Tanpa dukungan speechSynthesis, tombol ini hanya menggerakkan sorotan
+   * lewat timer cadangan supaya tetap ada yang terlihat bergerak.
    */
   function togglePlay() {
     if (!bisaSuara) {
       setNaskah("materi");
-      setPlaying((value) => !value);
+      if (!playing) {
+        // Timer cadangan mengukur posisi dari waktu mulai, jadi waktu awal
+        // harus diisi di sini juga. Tanpa ini sorotan langsung meloncat ke
+        // kata terakhir.
+        mulaiSuara.current = performance.now();
+        batasTerakhir.current = performance.now();
+        setWordIndex(0);
+      }
+      setPlaying(!playing);
       return;
     }
 
@@ -318,19 +375,45 @@ export function AdaptivePlayer({
     speak(naskah);
   }
 
-  // Timer-based highlight baseline. Always runs; boundary events override position.
+  /**
+   * Cadangan penyorotan kata untuk peramban tanpa event batas kata.
+   *
+   * Loop ini hanya berjalan kalau dua syarat sama-sama terpenuhi:
+   * peramban belum pernah mengirim batas kata, dan masa tenggang sudah
+   * lewat tanpa batas baru. Selama peramban masih mengirim batas kata,
+   * loop ini membaca ref lalu keluar tanpa mengubah apa pun.
+   *
+   * Posisi dihitung dari waktu berjalan, bukan menambah satu kata per tick.
+   * Kalau tick telat karena tab sedang berat, posisi tetap benar pada tick
+   * berikutnya. Versi lama menambah satu kata per tick sehingga galat
+   * menumpuk dan sorotan terus mendahului suara, lalu meloncat ke
+   * belakang saat event batas akhirnya tiba.
+   */
   React.useEffect(() => {
     if (!playing || paused || !uiTokens.audioEnabled) return;
-    const interval = window.setInterval(() => {
-      setWordIndex((current) => {
-        if (current + 1 >= words.length) {
-          setPlaying(false);
-          return 0;
-        }
-        return current + 1;
-      });
-    }, 1000 / (WORDS_PER_SECOND * speed));
-    return () => window.clearInterval(interval);
+
+    const totalKata = Math.max(words.length, 1);
+    const tick = window.setInterval(() => {
+      if (modeBoundary.current) return;
+      if (performance.now() - batasTerakhir.current < JEDA_BOUNDARY_MS) return;
+
+      const durasi =
+        ((totalKata - 1) / (WORDS_PER_SECOND * speed)) * 1000;
+      const posisi =
+        durasi > 0
+          ? Math.floor(
+              ((performance.now() - mulaiSuara.current) / durasi) *
+                (totalKata - 1),
+            )
+          : 0;
+
+      // Ditahan di kata terakhir sampai `onend` datang, jangan dibungkus
+      // ke kata pertama karena itu terlihat seperti suara diulang dari
+      // awal.
+      setWordIndex(Math.min(posisi, totalKata - 1));
+    }, 100);
+
+    return () => window.clearInterval(tick);
   }, [
     playing,
     paused,
@@ -361,29 +444,6 @@ export function AdaptivePlayer({
 
     return () => window.clearInterval(interval);
   }, [scanEnabled, interaction, answered]);
-
-  // Listen for switch activation (Space/Enter key).
-  React.useEffect(() => {
-    if (!scanEnabled || !interaction || answered) return;
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.code === "Space" || event.code === "Enter") {
-        event.preventDefault();
-        const option = interaction.options[scanIndex];
-        if (option) {
-          submitAnswer(option.label, option.correct);
-          setScanEnabled(false);
-        }
-      }
-      if (event.code === "Escape") {
-        event.preventDefault();
-        setScanEnabled(false);
-      }
-    }
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [scanEnabled, interaction, scanIndex, answered]);
 
   // Buka sesi belajar sekali saat materi dibuka (PRD 6.F).
   React.useEffect(() => {
@@ -456,6 +516,38 @@ export function AdaptivePlayer({
     catatJawaban(index, interactionType, response, correct);
     stopSpeaking();
   }
+
+  /**
+   * Dengarkan aktivasi sakelar lewat Spasi atau Enter, dan Escape untuk
+   * menghentikan pemindaian.
+   *
+   * Efek ini sengaja diletakkan setelah deklarasi `submitAnswer` di atas.
+   * Fungsi biasa di dalam komponen otomatis terangkat ke atas sehingga
+   * urutan deklarasi tidak masalah, tetapi aturan React Hooks tetap menolak
+   * rujukan ke fungsi yang belum dideklarasikan pada baris di atas.
+   */
+  React.useEffect(() => {
+    if (!scanEnabled || !interaction || answered) return;
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.code === "Space" || event.code === "Enter") {
+        event.preventDefault();
+        const option = interaction.options[scanIndex];
+        if (option) {
+          submitAnswer(option.label, option.correct);
+          setScanEnabled(false);
+        }
+      }
+      if (event.code === "Escape") {
+        event.preventDefault();
+        setScanEnabled(false);
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scanEnabled, interaction, scanIndex, answered]);
 
   /**
    * Judges a spoken or typed answer.
