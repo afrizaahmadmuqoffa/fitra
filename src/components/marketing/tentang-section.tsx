@@ -1,61 +1,48 @@
 import { Users, ShieldCheck, Eye } from "lucide-react";
 import { Reveal } from "@/components/marketing/reveal";
-import { BlobShape } from "@/components/marketing/blob-shape";
 
 const values = [
   {
-    title: "Kebutuhan belajar beragam",
-    body: "Ada jarak antara materi yang tersedia dan kebutuhan belajar siswa yang tidak selalu sama.",
+    title: "Berangkat dari profil siswa",
+    body: "Adaptasi dimulai dari kemampuan, kebutuhan, dan cara interaksi yang relevan bagi masing-masing siswa.",
     icon: Users,
   },
   {
-    title: "Adaptasi dibantu AI",
-    body: "Fitra membantu memindahkan pekerjaan adaptasi materi yang berulang ke dalam alur kerja yang lebih ringan.",
+    title: "Tujuan pembelajaran tetap terjaga",
+    body: "Fitra menyesuaikan cara penyajian dan interaksi tanpa mengubah tujuan pembelajaran serta informasi inti materi.",
     icon: ShieldCheck,
   },
   {
-    title: "Lebih banyak ruang untuk guru",
-    body: "Fitra bukan untuk menggantikan guru, tetapi untuk memberi guru lebih banyak ruang memperhatikan siswanya.",
+    title: "Guru tetap memegang kendali",
+    body: "Setiap draft dapat direview, diedit, diregenerasi, dan disetujui sebelum diterbitkan untuk siswa.",
     icon: Eye,
   },
 ];
 
 export function TentangSection() {
   return (
-    <section id="tentang" className="py-20 md:py-28">
-      <div className="mx-auto max-w-350 px-4 md:px-8">
-        <Reveal className="max-w-3xl">
-          <p className="mb-4 text-sm font-semibold uppercase tracking-[0.16em] text-primary">
-            Tentang Fitra
-          </p>
-          <h2 className="text-3xl font-bold tracking-tight text-balance md:text-5xl">
-            Membuat materi lebih mungkin cocok dengan siswanya.
+    <section className="section alt" id="tentang">
+      <div className="preview-container mx-auto grid gap-6 px-4 md:grid-cols-2 md:px-8 md:items-stretch">
+        <div className="about-main reveal rounded-[26px] bg-[#33635a] p-9 text-white">
+          <div className="section-kicker mb-3 text-[#bfe9d9]">Tentang Fitra</div>
+          <h2 className="text-[clamp(32px,4vw,48px)] font-heading tracking-[-0.04em] leading-[1.04]">
+            Pembelajaran adaptif, dengan guru tetap di kursi pengemudi.
           </h2>
-          <p className="mt-5 max-w-[65ch] text-lg leading-relaxed text-muted-foreground">
-            Kami membantu memperkecil jarak antara materi yang tersedia dan kebutuhan belajar
-            siswa—dengan alur adaptasi yang bisa dibantu AI, tanpa menggantikan peran guru.
+          <p className="mt-4 max-w-[560px] text-[15px] leading-[1.8] text-[#dcece7]">
+            Fitra adalah platform berbasis AI untuk membantu guru Sekolah Luar Biasa mengadaptasi satu materi pelajaran ke
+            beragam kebutuhan belajar individual. Sistem membantu menyusun draf, bukan menggantikan penilaian profesional
+            guru.
           </p>
-        </Reveal>
-        <div className="mt-12 grid gap-10 md:grid-cols-3">
+        </div>
+        <div className="about-side grid gap-4 stagger">
           {values.map((value, i) => {
             const Icon = value.icon;
             return (
               <Reveal key={value.title} delay={i * 0.05}>
-                <div className="group relative h-full rounded-2xl border border-border bg-card/60 p-6 pt-7 transition-all duration-300 hover:-translate-y-1 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5">
-                  <BlobShape
-                    variant={(((i + 1) % 5) + 1).toString() as "1" | "2" | "3" | "4" | "5"}
-                    className="absolute -right-3 -top-7 size-32 text-muted/10 transition-transform duration-300 group-hover:rotate-6"
-                  />
-                  <div className="relative flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                    <Icon className="size-5" aria-hidden />
-                  </div>
-                  <h3 className="relative mt-5 font-heading text-xl font-bold tracking-tight text-balance">
-                    {value.title}
-                  </h3>
-                  <p className="relative mt-3 leading-relaxed text-muted-foreground">
-                    {value.body}
-                  </p>
-                </div>
+                <article className="principle rounded-[22px] border border-border bg-card p-6">
+                  <h3 className="font-heading text-[16px] font-bold tracking-[-0.02em]">{value.title}</h3>
+                  <p className="mt-2 text-[13px] leading-[1.7] text-muted-foreground">{value.body}</p>
+                </article>
               </Reveal>
             );
           })}

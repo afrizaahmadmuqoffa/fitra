@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { PublicFooter } from "@/components/layout/public-footer";
 import { PublicNavbar } from "@/components/layout/public-navbar";
+import { AnnouncementBar } from "@/components/layout/announcement-bar";
+import { RevealObserver } from "@/components/marketing/reveal-observer";
 
 export default function PublicLayout({ children }: { children: ReactNode }) {
   return (
@@ -10,6 +12,7 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
         {children}
       </main>
       <PublicFooter />
+      <RevealObserver />
     </div>
   );
 }

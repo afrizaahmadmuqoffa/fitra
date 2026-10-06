@@ -24,45 +24,52 @@ export function PublicNavbar() {
 
   return (
     <header
-      className={`fixed inset-x-0 top-0 z-50 h-[72px] border-b transition-colors duration-300 ${
+      className={`sticky top-0 z-40 h-[78px] border-b backdrop-blur-[18px] transition-colors duration-300 ${
         scrolled
-          ? "border-border bg-background/90 backdrop-blur-md"
-          : "border-transparent bg-transparent"
+          ? "border-border bg-background/90"
+          : "border-border/60 bg-background/80"
       }`}
     >
-      <div className="relative mx-auto grid h-full max-w-350 grid-cols-[1fr_auto_1fr] items-center px-4 md:px-8">
-        {/* Logo */}
+      <div className="preview-container relative mx-auto flex h-full min-h-[78px] items-center px-4 md:px-8">
+        {/* Logo — far left */}
         <Link
           href="/"
-          className="flex shrink-0 items-center gap-2.5 font-heading text-lg font-bold tracking-tight"
+          className="brand inline-flex shrink-0 items-center gap-[11px] font-heading text-[19px] font-extrabold tracking-[-0.03em]"
         >
           <span
             aria-hidden
-            className="grid size-8 place-items-center rounded-lg bg-primary text-sm font-bold text-primary-foreground"
+            className="brand-mark grid size-9 place-items-center rounded-[11px] bg-[#33635a] text-white shadow-[0_7px_16px_rgba(51,99,90,0.22)]"
           >
-            F
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M6 6.5C6 5.67 6.67 5 7.5 5h9A1.5 1.5 0 0 1 18 6.5V17a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6.5Z"
+                stroke="currentColor"
+                strokeWidth="2"
+              />
+              <path d="M9 9h6M9 12h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
           </span>
           {APP_NAME}
         </Link>
 
-        {/* Desktop nav */}
-        <nav aria-label="Navigasi utama" className="hidden lg:block">
-          <ul className="flex items-center gap-1">
-            {publicNav.map((item) => (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  className="rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground active:translate-y-px"
-                >
-                  {item.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
+        {/* Desktop nav — absolute center */}
+        <nav
+          aria-label="Navigasi utama"
+          className="nav-links absolute left-1/2 hidden -translate-x-1/2 items-center gap-[26px] text-[14px] font-bold text-foreground/70 lg:flex"
+        >
+          {publicNav.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="relative py-2 after:absolute after:bottom-[3px] after:left-0 after:h-0.5 after:w-full after:scale-x-0 after:rounded-full after:bg-primary after:origin-left after:transition-transform after:duration-180 after:ease-[var(--ease-out)] hover:after:scale-x-100"
+            >
+              {item.label}
+            </Link>
+          ))}
         </nav>
 
-        {/* Right side actions */}
-        <div className="col-start-3 flex items-center justify-end gap-2">
+        {/* Right side actions — far right */}
+        <div className="nav-actions ml-auto flex items-center gap-1">
           {/* Theme toggle */}
           <Button
             variant="ghost"
@@ -91,7 +98,7 @@ export function PublicNavbar() {
           </Button>
 
           {/* Daftar Gratis — desktop only, removed on mobile */}
-          <Button asChild className="hidden lg:inline-flex whitespace-nowrap">
+          <Button asChild className="btn btn-primary hidden h-11 min-h-[44px] whitespace-nowrap rounded-[14px] bg-[#33635a] px-4 text-[14px] font-extrabold text-white shadow-[0_10px_24px_rgba(51,99,90,0.2)] hover:bg-[#254d46] hover:shadow-[0_14px_30px_rgba(51,99,90,0.24)] lg:inline-flex">
             <Link href="/masuk">Daftar Gratis</Link>
           </Button>
 

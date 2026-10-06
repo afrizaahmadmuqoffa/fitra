@@ -64,7 +64,7 @@ export function DashboardSidebar({
       >
         <Link
           href="/dashboard"
-          className="flex items-center gap-2.5 font-heading font-bold tracking-tight"
+          className="flex items-center gap-2.5 font-heading font-bold tracking-tight text-sidebar-foreground"
         >
           <span
             aria-hidden
@@ -94,8 +94,8 @@ export function DashboardSidebar({
                   "flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-sm font-medium transition-colors active:translate-y-px",
                   collapsed && "justify-center px-0",
                   active
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-semibold"
+                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
                 )}
               >
                 <Icon className="size-[18px] shrink-0" aria-hidden />
@@ -124,7 +124,10 @@ export function DashboardSidebar({
           variant="ghost"
           size="sm"
           onClick={toggle}
-          className={cn("w-full", collapsed ? "px-0" : "justify-start")}
+          className={cn(
+            "w-full text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
+            collapsed ? "px-0" : "justify-start",
+          )}
           aria-label={collapsed ? "Perlebar sidebar" : "Ciutkan sidebar"}
         >
           {collapsed ? (
