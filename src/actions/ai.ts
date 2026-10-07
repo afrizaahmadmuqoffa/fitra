@@ -464,7 +464,11 @@ export async function generateVisualAction(input: unknown): Promise<ActionResult
       if (!aset) return null;
 
       const [materi] = await tx
-        .select({ judul: materials.title })
+        .select({
+          judul: materials.title,
+          materialId: materials.id,
+          studentId: materialAdaptations.studentId,
+        })
         .from(materials)
         .innerJoin(
           materialAdaptations,
@@ -473,7 +477,12 @@ export async function generateVisualAction(input: unknown): Promise<ActionResult
         .where(eq(materialAdaptations.id, adaptationId))
         .limit(1);
 
-      return { aset, judulMateri: materi?.judul ?? "materi sekolah" };
+      return {
+        aset,
+        judulMateri: materi?.judul ?? "materi sekolah",
+        materialId: materi?.materialId ?? null,
+        studentId: materi?.studentId ?? null,
+      };
     });
 
     if (!data) {
@@ -482,7 +491,7 @@ export async function generateVisualAction(input: unknown): Promise<ActionResult
       );
     }
 
-    const { aset, judulMateri } = data;
+    const { aset, judulMateri, materialId: materiId, studentId: siswaId } = data;
 
     if (skipIfReady && aset.status === "ready" && aset.storagePath) {
       return { ok: true, message: "Ilustrasi bagian ini sudah ada." };
@@ -494,7 +503,9 @@ export async function generateVisualAction(input: unknown): Promise<ActionResult
         .set({ status: "generating" })
         .where(eq(visualAssets.id, aset.id));
     });
-    revalidatePath(`/dashboard/materi/${adaptationId}/adaptasi`);
+    if (materiId && siswaId) {
+      revalidatePath(`/dashboard/materi/${materiId}/adaptasi/${siswaId}`);
+    }
 
     try {
       const hasil = await buatVisual({
@@ -537,7 +548,10 @@ export async function generateVisualAction(input: unknown): Promise<ActionResult
         }
       }
 
-      revalidatePath(`/dashboard/materi/${adaptationId}/adaptasi`);
+      revalidatePath(`/dashboard/materi/${materiId ?? adaptationId}/adaptasi`);
+      if (materiId && siswaId) {
+        revalidatePath(`/dashboard/materi/${materiId}/adaptasi/${siswaId}`);
+      }
       return { ok: true, message: "Ilustrasi dibuat dan tersimpan." };
     } catch (error) {
       catatGalat("generateVisual", error);
@@ -547,7 +561,10 @@ export async function generateVisualAction(input: unknown): Promise<ActionResult
           .set({ status: "failed" })
           .where(eq(visualAssets.id, aset.id));
       });
-      revalidatePath(`/dashboard/materi/${adaptationId}/adaptasi`);
+      revalidatePath(`/dashboard/materi/${materiId ?? adaptationId}/adaptasi`);
+      if (materiId && siswaId) {
+        revalidatePath(`/dashboard/materi/${materiId}/adaptasi/${siswaId}`);
+      }
       return gagal(pesanAi(error));
     }
   } catch (error) {

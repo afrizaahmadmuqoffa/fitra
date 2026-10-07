@@ -184,16 +184,32 @@ export function AdaptationEditor({
         generateVisualAction({ adaptationId, sectionIndex, skipIfReady: false }),
       );
       if (!hasil.ok) {
+        // Rollback ke status sebelumnya
+        setAssets((current) =>
+          current.map((asset) =>
+            asset.sectionIndex === sectionIndex
+              ? { ...asset, status: sebelumnya ?? "failed" }
+              : asset,
+          ),
+        );
         toast.error("Ilustrasi belum bisa dibuat", { description: hasil.message });
-        router.refresh();
         return;
       }
+      // Update status lokal dulu supaya UI tidak stuck di "generating"
+      setAssets((current) =>
+        current.map((asset) =>
+          asset.sectionIndex === sectionIndex
+            ? { ...asset, status: "ready" }
+            : asset,
+        ),
+      );
       toast.success("Ilustrasi dibuat", {
         description:
           sebelumnya === "pending"
             ? `Gambar baru dipakai pada bagian ini untuk siswa ${student.nickname}.`
             : "Gambar baru menggantikan ilustrasi sebelumnya pada bagian ini.",
       });
+      // refresh untuk sync imageUrl dari server
       router.refresh();
     } finally {
       setBusy(null);
@@ -441,13 +457,21 @@ export function AdaptationEditor({
             </Button>
           ) : null}
           {status !== "approved" ? (
-            <Button disabled={sections.length === 0} onClick={approve}>
-              <Check />
+            <Button disabled={sections.length === 0 || busy === "approve"} onClick={approve}>
+              {busy === "approve" ? (
+                <Loader2 className="animate-spin" aria-hidden />
+              ) : (
+                <Check aria-hidden />
+              )}
               Setujui
             </Button>
           ) : (
-            <Button variant="outline" onClick={reject}>
-              <TriangleAlert />
+            <Button variant="outline" disabled={busy === "reject"} onClick={reject}>
+              {busy === "reject" ? (
+                <Loader2 className="animate-spin" aria-hidden />
+              ) : (
+                <TriangleAlert aria-hidden />
+              )}
               Cabut persetujuan
             </Button>
           )}
@@ -711,7 +735,7 @@ export function AdaptationEditor({
                               )}
                             >
                               {asset.imageUrl ? null : (
-                                <span>
+                                <span className="text-center px-4">
                                   {asset.status === "failed"
                                     ? "Ilustrasi gagal dibuat. Buat ulang atau unggah gambar sendiri."
                                     : asset.status === "rejected"
@@ -720,10 +744,25 @@ export function AdaptationEditor({
                                         ? "Belum ada gambar. Minta AI membuatkannya atau unggah gambar sendiri."
                                         : asset.status === "generating"
                                           ? "AI sedang membuat ilustrasi..."
-                                          : "Menunggu ilustrasi"}
+                                          : asset.status === "ready"
+                                            ? "Gambar tersimpan. Klik muat ulang untuk menampilkannya."
+                                            : "Menunggu ilustrasi"}
                                 </span>
                               )}
                             </div>
+
+                            {/* Tombol refresh fallback — muncul saat status ready tapi imageUrl belum ada */}
+                            {asset.status === "ready" && !asset.imageUrl ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => router.refresh()}
+                                className="w-full"
+                              >
+                                <RefreshCw className="size-3.5" aria-hidden />
+                                Muat ulang untuk menampilkan gambar
+                              </Button>
+                            ) : null}
 
                             <div>
                               <Label htmlFor={`alt-${sectionIndex}`}>
@@ -1016,57 +1055,101 @@ export function AdaptationEditor({
       </div>
 
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
+        <DialogContent className="flex max-h-[90dvh] max-w-2xl flex-col gap-0 p-0">
+          <DialogHeader className="shrink-0 border-b px-6 py-4">
             <DialogTitle>Pratinjau tampilan siswa</DialogTitle>
             <DialogDescription>
-              Tampilan {student.nickname} dengan ukuran teks, kontras, dan tombol besar
-              sesuai profil belajar.
+              Tampilan {student.nickname} dengan ukuran teks, kontras, dan tombol
+              sesuai profil belajar. Interaksi tidak aktif di pratinjau ini.
             </DialogDescription>
           </DialogHeader>
-          <div className="student-surface space-y-4">
-            {sections.map((section, sectionIndex) => (
-              <div key={section.index} className="rounded-lg border p-4">
-                <p className="font-heading text-lg font-semibold">{section.title}</p>
-                {section.media[0] ? (
-                  <div
-                    role="img"
-                    aria-label={section.media[0].altText}
-                    style={
-                      assetFor(sectionIndex)?.imageUrl
-                        ? { backgroundImage: `url(${assetFor(sectionIndex)?.imageUrl})` }
-                        : undefined
-                    }
-                    className="mt-3 h-40 rounded-lg border bg-muted/60 bg-cover bg-center"
-                  />
-                ) : null}
-                {section.body.map((line, j) => (
-                  <p key={j} className="mt-2 text-base leading-relaxed">
-                    {line}
-                  </p>
-                ))}
-                {section.interactions[0] ? (
-                  <div className="mt-4 space-y-2">
-                    <p className="text-base font-medium">{section.interactions[0].prompt}</p>
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      {section.interactions[0].options.map((option) => (
-                        <div
-                          key={option.id}
-                          className="flex min-h-14 items-center justify-center rounded-xl border-2 border-primary/40 bg-accent/40 px-3 text-center text-base font-medium"
-                        >
-                          {option.label}
-                        </div>
+
+          {/* Preview surface — pakai token UI dari profil */}
+          <div
+            className={cn(
+              "student-surface flex-1 overflow-y-auto px-6 py-5",
+              profile.uiTokens.contrastMode === "high" && "student-contrast",
+            )}
+            style={{
+              "--student-scale":
+                profile.uiTokens.fontSize === "low"
+                  ? 1.15
+                  : profile.uiTokens.fontSize === "high"
+                    ? 1.3
+                    : 1,
+            } as React.CSSProperties}
+          >
+            <div className="space-y-4">
+              {sections.map((section, sectionIndex) => {
+                const asset = assetFor(sectionIndex);
+                return (
+                  <div key={section.index} className="rounded-xl border bg-card p-4 shadow-sm">
+                    <p className="font-heading text-lg font-semibold leading-snug">
+                      {section.title}
+                    </p>
+
+                    {/* Gambar ilustrasi */}
+                    {asset?.imageUrl ? (
+                      <img
+                        src={asset.imageUrl}
+                        alt={section.media[0]?.altText ?? ""}
+                        className="mt-3 w-full rounded-lg object-cover"
+                        style={{ maxHeight: "220px" }}
+                      />
+                    ) : section.media[0] ? (
+                      <div className="mt-3 flex h-32 items-center justify-center rounded-lg border bg-muted/60 text-xs text-muted-foreground">
+                        Ilustrasi belum dibuat
+                      </div>
+                    ) : null}
+
+                    {/* Isi teks */}
+                    <div className="mt-3 space-y-2">
+                      {section.body.map((line, j) => (
+                        <p key={j} className="leading-relaxed">
+                          {line}
+                        </p>
                       ))}
                     </div>
+
+                    {/* Semua interaksi */}
+                    {section.interactions.map((interaction, intIndex) => (
+                      <div key={intIndex} className="mt-4 rounded-lg border border-primary/20 bg-accent/20 p-3">
+                        <p className="font-medium leading-snug">{interaction.prompt}</p>
+                        {interaction.options.length > 0 ? (
+                          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                            {interaction.options.map((option) => (
+                              <div
+                                key={option.id}
+                                className="flex min-h-12 items-center justify-center rounded-xl border-2 border-primary/30 bg-background px-3 text-center font-medium transition-colors"
+                              >
+                                {option.label}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="mt-2 rounded-lg border bg-background px-3 py-2 text-sm text-muted-foreground">
+                            Ketik jawaban...
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                ) : null}
-              </div>
-            ))}
+                );
+              })}
+            </div>
           </div>
-          <DialogFooter>
-            <Badge variant="secondary">
-              {sections.length} bagian - {adaptation.adaptedContent.readingLevel}
-            </Badge>
+
+          <DialogFooter className="shrink-0 border-t px-6 py-3">
+            <div className="flex w-full flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <Badge variant="secondary">{sections.length} bagian</Badge>
+              <Badge variant="secondary">{adaptation.adaptedContent.readingLevel}</Badge>
+              <Badge variant="secondary">
+                Teks {profile.uiTokens.fontSize === "low" ? "besar (1.15×)" : profile.uiTokens.fontSize === "high" ? "sangat besar (1.3×)" : "normal"}
+              </Badge>
+              {profile.uiTokens.contrastMode === "high" && (
+                <Badge variant="secondary">Kontras tinggi</Badge>
+              )}
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
