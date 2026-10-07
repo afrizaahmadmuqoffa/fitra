@@ -27,7 +27,7 @@ export default async function StudentSessionListPage({
   if (!access) return <TokenNotice status="tidak-ditemukan" />;
 
   const { student, profile } = await getStudentContextForStudent(access.studentId);
-  if (!student) return <TokenNotice status="tidak-ditemuka" />;
+  if (!student) return <TokenNotice status="data-siswa-tidak-ditemukan" />;
 
   if (!access.isActive) {
     return <TokenNotice status="nonaktif" studentName={student.fullName} />;

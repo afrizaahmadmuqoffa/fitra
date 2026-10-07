@@ -1,14 +1,10 @@
 "use client";
 
-import * as React from "react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
 import { useStudentAdaptive } from "@/components/student/adaptive-provider";
-import { cn } from "@/lib/utils";
-import { ArrowRight, BookOpen, CircleCheck, Trophy } from "lucide-react";
+import { ArrowRight, BookOpen, Check, Clock3, Sparkles, Trophy } from "lucide-react";
 import type { ActiveMaterialRow } from "@/db/queries";
 import type { Student } from "@/lib/dummy/types";
 
@@ -37,101 +33,102 @@ export function StudentSessionList({
   const accuracy = records.length ? Math.round((correct / records.length) * 100) : 0;
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-5 px-3 py-5">
-      <div>
-        <h1 className="font-heading text-2xl font-bold">Materi untukmu, {displayName}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {classNames.join(" dan ")} - {items.length} materi sudah disiapkan gurumu.
-        </p>
+    <div className="mx-auto w-full max-w-5xl px-4 py-7 sm:px-6 sm:py-10">
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+        <div>
+          <div className="inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1.5 text-xs font-black uppercase tracking-[0.16em] text-[#33635a]/70 shadow-sm ring-1 ring-black/[0.03]">
+            <Sparkles className="size-3.5" aria-hidden="true" />
+            Rak belajar
+          </div>
+          <h1 className="mt-4 font-heading text-3xl font-black tracking-[-0.04em] sm:text-5xl">
+            Pilih petualanganmu, {displayName}.
+          </h1>
+          <p className="mt-2 max-w-2xl text-base leading-7 text-[#17352f]/58 sm:text-lg">
+            {classNames.length ? classNames.join(" dan ") : "Kelasmu"} · {items.length} materi tersedia. Pilih satu, lalu belajar dengan ritmemu sendiri.
+          </p>
+        </div>
+        <Link href={backHref} className="text-sm font-bold text-[#33635a] hover:underline">Kembali ke sapaan</Link>
       </div>
 
       {items.length === 0 ? (
-        <Card className="border-dashed px-6 py-12 text-center">
-          <BookOpen className="mx-auto size-8 text-muted-foreground" aria-hidden="true" />
-          <p className="mt-3 font-heading text-lg font-semibold">
-            Belum ada materi hari ini
+        <div className="relative mt-7 overflow-hidden rounded-[2.5rem] border border-dashed border-[#33635a]/20 bg-white/70 px-6 py-14 text-center shadow-sm">
+          <div className="absolute left-6 top-6 size-10 rotate-12 rounded-2xl bg-[#ffe9a6]/70" aria-hidden="true" />
+          <div className="absolute right-6 bottom-6 size-12 -rotate-12 rounded-2xl bg-[#cbe7f6]/75" aria-hidden="true" />
+          <div className="relative mx-auto grid size-16 place-items-center rounded-2xl bg-[#e9f7f1] text-[#33635a]">
+            <BookOpen className="size-7" aria-hidden="true" />
+          </div>
+          <h2 className="mt-5 font-heading text-2xl font-black">Rakmu masih kosong.</h2>
+          <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-[#17352f]/58 sm:text-base">
+            Gurumu sedang menyiapkan materi yang cocok untukmu. Nanti materi yang sudah diterbitkan akan muncul di sini.
           </p>
-          <p className="mx-auto mt-1 max-w-md text-sm leading-relaxed text-muted-foreground">
-            Gurumu sedang menyiapkan materi yang disesuaikan dengan caramu belajar.
-            Coba lagi setelah guru menerbitkannya.
-          </p>
-        </Card>
+        </div>
       ) : (
-        <ul className="space-y-3">
-          {items.map((item) => {
+        <div className="mt-7 space-y-4">
+          {items.map((item, itemIndex) => {
             const started = attempted.includes(item.adaptationId);
+            const tones = ["bg-[#eff9f4]", "bg-[#fff8e0]", "bg-[#eef8fd]", "bg-[#f0edfd]"];
+            const tone = tones[itemIndex % tones.length];
             return (
-              <li key={item.adaptationId}>
-                <Card
-                  className={cn(
-                    "border-2 transition-colors",
-                    started ? "border-success/40" : "border-primary/30",
-                  )}
-                >
-                  <CardContent className="flex flex-col gap-3 py-5">
-                    <div className="flex items-start gap-3">
-                      <span
-                        className={cn(
-                          "grid size-12 shrink-0 place-items-center rounded-xl",
-                          started
-                            ? "bg-success/12 text-success"
-                            : "bg-accent text-accent-foreground",
-                        )}
-                      >
-                        {started ? (
-                          <CircleCheck className="size-6" aria-hidden="true" />
-                        ) : (
-                          <BookOpen className="size-6" aria-hidden="true" />
-                        )}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="font-heading text-lg font-semibold">{item.title}</p>
-                        <p className="mt-0.5 text-sm text-muted-foreground">
-                          {item.subject} - {item.sections} bagian
-                        </p>
-                        <Badge
-                          className="mt-2"
-                          variant={started ? "default" : "secondary"}
-                        >
-                          {started ? "Sudah kamu baca" : "Materi baru"}
-                        </Badge>
-                      </div>
+              <Link
+                key={item.adaptationId}
+                href={`${backHref}/sesi/${item.adaptationId}`}
+                className={`group block overflow-hidden rounded-[2.25rem] border border-white/80 ${tone} shadow-[0_12px_35px_rgba(23,53,47,.06)] outline-none transition-transform duration-200 ease-out hover:-translate-y-1 focus-visible:ring-2 focus-visible:ring-[#33635a]/35 active:scale-[0.995]`}
+              >
+                <div className="grid gap-5 p-5 sm:grid-cols-[auto_1fr_auto] sm:items-center sm:p-6">
+                  <div className="flex items-center gap-3 sm:flex-col sm:items-start">
+                    <div className="grid size-14 shrink-0 place-items-center rounded-2xl bg-white/80 text-[#33635a] shadow-sm">
+                      <span className="font-heading text-xl font-black">{String(itemIndex + 1).padStart(2, "0")}</span>
                     </div>
+                    <Badge className={started ? "bg-white/80 text-[#33635a] hover:bg-white/80" : "bg-[#33635a] text-white hover:bg-[#33635a]"}>
+                      {started ? <><Check className="mr-1 size-3.5" /> Sudah dibaca</> : "Materi baru"}
+                    </Badge>
+                  </div>
 
-                    <Button asChild className={TAP} size="lg">
-                      <Link href={`${backHref}/sesi/${item.adaptationId}`}>
-                        {started ? "Baca lagi" : "Mulai baca"}
-                        <ArrowRight className="size-6" aria-hidden="true" />
-                      </Link>
-                    </Button>
-                  </CardContent>
-                </Card>
-              </li>
+                  <div className="min-w-0">
+                    <h2 className="font-heading text-xl font-black tracking-[-0.02em] sm:text-2xl">{item.title}</h2>
+                    <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm font-medium text-[#17352f]/52">
+                      <span>{item.subject}</span>
+                      <span className="inline-flex items-center gap-1"><BookOpen className="size-3.5" /> {item.sections} bagian</span>
+                      <span className="inline-flex items-center gap-1"><Clock3 className="size-3.5" /> {Math.max(2, item.sections * 2)} menit</span>
+                    </div>
+                    <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/75">
+                      <div className={`h-full rounded-full bg-[#33635a] transition-[width] duration-300 ease-out ${started ? "w-full" : "w-[18%]"}`} />
+                    </div>
+                    <p className="mt-2 text-xs font-bold uppercase tracking-[0.12em] text-[#33635a]/55">
+                      {started ? "Kamu bisa mengulang kapan saja" : "Siap untuk dicoba"}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center justify-between sm:flex-col sm:items-end sm:justify-center">
+                    <div className="grid size-12 place-items-center rounded-2xl bg-[#33635a] text-white shadow-sm transition-transform duration-200 ease-out group-hover:translate-x-1">
+                      <ArrowRight className="size-5" aria-hidden="true" />
+                    </div>
+                    <span className="mt-2 hidden text-xs font-bold text-[#17352f]/40 sm:block">{started ? "Baca lagi" : "Mulai"}</span>
+                  </div>
+                </div>
+              </Link>
             );
           })}
-        </ul>
+        </div>
       )}
 
-      <Card className="border-border/80 bg-muted/50">
-        <CardContent className="space-y-3 py-5">
-          <div className="flex items-center gap-2">
-            <Trophy className="size-5 text-primary" aria-hidden="true" />
-            <p className="font-heading text-base font-semibold">Hasil belajarmu</p>
+      <section className="mt-6 grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
+        <div className="rounded-[2.25rem] border border-white/80 bg-white/70 p-5 shadow-sm sm:p-6">
+          <div className="flex items-center gap-3">
+            <div className="grid size-11 place-items-center rounded-2xl bg-[#ffe9a6] text-[#735d18]"><Trophy className="size-5" aria-hidden="true" /></div>
+            <div>
+              <p className="font-heading text-base font-black">Jejak belajarmu</p>
+              <p className="text-sm text-[#17352f]/50">{correct} dari {records.length} jawaban benar · {accuracy}% ketepatan</p>
+            </div>
           </div>
-          <Progress
-            value={accuracy}
-            className="h-2"
-            indicatorClassName="bg-primary"
-            aria-label="Ketepatan jawaban yang terkumpul"
-          />
-          <p className="text-sm text-muted-foreground">
-            {correct} dari {records.length} jawaban benar selama ini.
-          </p>
-          <Button variant="outline" asChild className={TAP}>
-            <Link href={doneHref}>Lihat ringkasan belajar</Link>
-          </Button>
-        </CardContent>
-      </Card>
+          <div className="mt-4 h-3 overflow-hidden rounded-full bg-[#ecebe3]">
+            <div className="h-full rounded-full bg-[#33635a] transition-[width] duration-300 ease-out" style={{ width: `${accuracy}%` }} />
+          </div>
+        </div>
+        <Button asChild variant="outline" size="lg" className={`${TAP} rounded-2xl border-[#17352f]/10 bg-white/80 font-bold text-[#17352f] active:scale-[0.97]`}>
+          <Link href={doneHref}>Lihat ringkasan</Link>
+        </Button>
+      </section>
     </div>
   );
 }

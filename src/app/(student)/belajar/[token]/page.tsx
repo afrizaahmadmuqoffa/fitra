@@ -44,7 +44,7 @@ export default async function StudentEntryPage({
     );
   }
 
-  if (!student) return <TokenNotice status="tidak-ditemuka" />;
+  if (!student) return <TokenNotice status="data-siswa-tidak-ditemukan" />;
 
   const [classes, active] = await Promise.all([
     getStudentClasses(student.id),
