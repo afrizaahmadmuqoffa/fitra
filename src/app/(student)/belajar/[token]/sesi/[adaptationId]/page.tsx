@@ -29,7 +29,7 @@ export default async function StudentPlayerPage({
   if (!bundle || bundle.studentId !== access.studentId) notFound();
 
   const { student, profile } = await getStudentContextForStudent(bundle.studentId);
-  if (!student) return <TokenNotice status="tidak-ditemuka" />;
+  if (!student) return <TokenNotice status="data-siswa-tidak-ditemukan" />;
 
   if (!access.isActive) {
     return <TokenNotice status="nonaktif" studentName={student.fullName} />;

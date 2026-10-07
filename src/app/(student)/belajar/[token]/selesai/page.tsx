@@ -29,7 +29,7 @@ export default async function StudentDonePage({
   if (!access) return <TokenNotice status="tidak-ditemukan" />;
 
   const { student, profile } = await getStudentContextForStudent(access.studentId);
-  if (!student) return <TokenNotice status="tidak-ditemuka" />;
+  if (!student) return <TokenNotice status="data-siswa-tidak-ditemukan" />;
 
   const [sessions, records] = await Promise.all([
     getSessionsForStudent(student.id),
