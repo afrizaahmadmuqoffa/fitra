@@ -131,7 +131,6 @@ export function PublicNavbar() {
                     <path d="M9 9h6M9 12h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                   </svg>
                 </span>
-                </span>
                 <SheetTitle className="font-heading text-base font-bold tracking-tight">
                   {APP_NAME}
                 </SheetTitle>
