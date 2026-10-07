@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import * as React from "react";
 import Link from "next/link";
 import { Menu, Moon, Sun } from "lucide-react";
@@ -36,19 +37,14 @@ export function PublicNavbar() {
           href="/"
           className="brand inline-flex shrink-0 items-center gap-[11px] font-heading text-[19px] font-extrabold tracking-[-0.03em]"
         >
-          <span
+          <Image
+            src="/logo.png"
+            alt=""
             aria-hidden
-            className="brand-mark grid size-9 place-items-center rounded-[11px] bg-[#33635a] text-white shadow-[0_7px_16px_rgba(51,99,90,0.22)]"
-          >
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="none">
-              <path
-                d="M6 6.5C6 5.67 6.67 5 7.5 5h9A1.5 1.5 0 0 1 18 6.5V17a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6.5Z"
-                stroke="currentColor"
-                strokeWidth="2"
-              />
-              <path d="M9 9h6M9 12h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-          </span>
+            width={36}
+            height={36}
+            className="size-9 rounded-[11px] shadow-[0_7px_16px_rgba(51,99,90,0.22)]"
+          />
           {APP_NAME}
         </Link>
 
@@ -118,19 +114,14 @@ export function PublicNavbar() {
             <SheetContent side="right" className="flex w-[min(22rem,88vw)] flex-col p-0">
               {/* Sidebar header */}
               <div className="flex items-center gap-2.5 border-b px-5 py-4">
-                <span
+                <Image
+                  src="/logo.png"
+                  alt=""
                   aria-hidden
-                  className="grid size-7 shrink-0 place-items-center rounded-md bg-[#33635a] text-white shadow-[0_4px_10px_rgba(51,99,90,0.22)]"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                    <path
-                      d="M6 6.5C6 5.67 6.67 5 7.5 5h9A1.5 1.5 0 0 1 18 6.5V17a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6.5Z"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    />
-                    <path d="M9 9h6M9 12h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                  </svg>
-                </span>
+                  width={28}
+                  height={28}
+                  className="size-7 rounded-md shadow-[0_4px_10px_rgba(51,99,90,0.22)]"
+                />
                 <SheetTitle className="font-heading text-base font-bold tracking-tight">
                   {APP_NAME}
                 </SheetTitle>

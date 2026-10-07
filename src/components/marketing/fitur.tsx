@@ -65,7 +65,7 @@ export function Fitur() {
         <div className="section-head reveal">
           <div className="section-kicker">Fitur utama</div>
           <h2>Yang Anda dapatkan</h2>
-          <p>Fitra membantu dari materi pertama sampai siswa siap belajar—tanpa mengambil alih peran guru.</p>
+          <p>Fitra membantu dari materi pertama sampai siswa siap belajar.</p>
         </div>
 
         <div className="mt-12 grid gap-4 md:grid-cols-3">
@@ -133,11 +133,11 @@ export function CaraKerja() {
           <p>Alurnya singkat: profil, materi, adaptasi, review, lalu belajar.</p>
         </div>
 
-        <div className="how-grid stagger grid gap-3 md:grid-cols-5">
+        <div className="how-grid stagger grid gap-3 md:grid-cols-5 md:items-stretch">
           {steps.map((step, i) => (
-            <Reveal key={step.title} delay={i * 0.04}>
+            <Reveal key={step.title} delay={i * 0.04} className="h-full">
               <article
-                className={`step relative min-h-[220px] rounded-[21px] border border-border bg-card p-5 md:p-5 ${i < steps.length - 1 ? "after:absolute after:-right-[17px] after:top-1/2 after:z-10 after:-translate-y-1/2 after:size-8 after:rounded-full after:border after:border-border after:bg-background after:text-muted-foreground after:content-['→'] after:text-[13px] after:font-bold after:hidden lg:after:flex lg:after:items-center lg:after:justify-center" : ""}`}
+                className={`step relative flex h-full flex-col rounded-[21px] border border-border bg-card p-5 ${i < steps.length - 1 ? "after:absolute after:-right-[17px] after:top-1/2 after:z-10 after:-translate-y-1/2 after:size-8 after:rounded-full after:border after:border-border after:bg-background after:text-muted-foreground after:content-['→'] after:text-[13px] after:font-bold after:hidden lg:after:flex lg:after:items-center lg:after:justify-center" : ""}`}
               >
                 <span className="step-number grid size-8 place-items-center rounded-[11px] bg-[#33635a] text-[11px] font-black text-white">
                   {String(i + 1).padStart(2, "0")}
@@ -149,8 +149,6 @@ export function CaraKerja() {
           ))}
         </div>
         <div className="how-caption reveal mt-[21px] flex items-start gap-2 text-[12px] font-semibold text-muted-foreground">
-          <span className="font-black text-[#33635a] dark:text-[#9fe7c8]">Catatan:</span> Fitra menempatkan AI sebagai pembantu penyusunan,
-          sementara keputusan akhir tetap berada di tangan guru.
         </div>
       </div>
     </section>

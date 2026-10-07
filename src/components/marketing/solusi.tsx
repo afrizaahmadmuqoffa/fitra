@@ -37,9 +37,6 @@ export function Solusi() {
             <strong className="font-heading text-[17px] leading-[1.35] block">
               Tujuan pembelajaran tetap. Cara menyampaikannya yang berubah.
             </strong>
-            <span className="mt-2 block text-[12px] text-[#d6e9e3]">
-              Guru tetap menjadi pengendali utama melalui kurasi dan persetujuan.
-            </span>
           </div>
         </div>
         <div className="solution-points grid gap-3 stagger">

@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { ArrowLeft } from "lucide-react";
@@ -83,12 +84,14 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
           href="/"
           className="relative z-10 flex items-center gap-2.5 font-heading text-lg font-bold tracking-tight"
         >
-          <span
+          <Image
+            src="/logo.png"
+            alt=""
             aria-hidden
-            className="grid size-8 place-items-center rounded-[10px] bg-primary-foreground text-sm font-bold text-primary"
-          >
-            F
-          </span>
+            width={32}
+            height={32}
+            className="size-8 rounded-[10px] bg-white shadow-[0_4px_10px_rgba(0,0,0,0.2)]"
+          />
           {APP_NAME}
         </Link>
         <div className="relative z-10 my-auto max-w-[36ch]">

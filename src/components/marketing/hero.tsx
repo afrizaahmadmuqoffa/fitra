@@ -36,9 +36,6 @@ export function Hero() {
               <Link href="/#cara-kerja">Lihat Cara Kerja</Link>
             </Button>
           </div>
-          <div className="hero-note mt-[15px] text-[12px] font-semibold text-muted-foreground">
-            AI membantu menyusun draft. Guru tetap memegang kendali.
-          </div>
         </div>
       </div>
     </section>

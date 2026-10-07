@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -66,19 +67,14 @@ export function DashboardSidebar({
           href="/dashboard"
           className="flex items-center gap-2.5 font-heading font-bold tracking-tight text-sidebar-foreground"
         >
-          <span
+          <Image
+            src="/logo.png"
+            alt=""
             aria-hidden
-            className="grid size-8 shrink-0 place-items-center rounded-[10px] bg-sidebar-primary text-sidebar-primary-foreground shadow-[0_4px_10px_rgba(0,0,0,0.15)]"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <path
-                d="M6 6.5C6 5.67 6.67 5 7.5 5h9A1.5 1.5 0 0 1 18 6.5V17a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6.5Z"
-                stroke="currentColor"
-                strokeWidth="2"
-              />
-              <path d="M9 9h6M9 12h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-            </svg>
-          </span>
+            width={32}
+            height={32}
+            className="size-8 shrink-0 rounded-[10px] shadow-[0_4px_10px_rgba(0,0,0,0.15)]"
+          />
           {!collapsed && <span className="truncate">{APP_NAME}</span>}
         </Link>
       </div>
