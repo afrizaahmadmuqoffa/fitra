@@ -120,9 +120,17 @@ export function PublicNavbar() {
               <div className="flex items-center gap-2.5 border-b px-5 py-4">
                 <span
                   aria-hidden
-                  className="grid size-7 place-items-center rounded-md bg-primary text-xs font-bold text-primary-foreground"
+                  className="grid size-7 shrink-0 place-items-center rounded-md bg-[#33635a] text-white shadow-[0_4px_10px_rgba(51,99,90,0.22)]"
                 >
-                  F
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                    <path
+                      d="M6 6.5C6 5.67 6.67 5 7.5 5h9A1.5 1.5 0 0 1 18 6.5V17a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6.5Z"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    />
+                    <path d="M9 9h6M9 12h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  </svg>
+                </span>
                 </span>
                 <SheetTitle className="font-heading text-base font-bold tracking-tight">
                   {APP_NAME}

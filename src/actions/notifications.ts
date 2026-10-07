@@ -25,7 +25,7 @@ export async function markAllNotificationsReadAction(): Promise<ActionResult> {
         );
     });
 
-    revalidatePath("/dashboard", "layout");
+    revalidatePath("/dashboard");
     return { ok: true, message: "Semua notifikasi ditandai sudah dibaca." };
   } catch (error) {
     return fail(
@@ -52,7 +52,7 @@ export async function markNotificationReadAction(
         );
     });
 
-    revalidatePath("/dashboard", "layout");
+    revalidatePath("/dashboard");
     return { ok: true, message: "Notifikasi ditandai sudah dibaca." };
   } catch (error) {
     return fail(
@@ -80,7 +80,7 @@ export async function createNotificationAction(input: {
       });
     });
 
-    revalidatePath("/dashboard", "layout");
+    revalidatePath("/dashboard");
     return { ok: true, message: "Notifikasi dibuat." };
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Notifikasi gagal dibuat.");

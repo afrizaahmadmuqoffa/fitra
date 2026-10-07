@@ -54,7 +54,7 @@ export async function updateTeacherProfileAction(
     });
 
     revalidatePath("/dashboard/pengaturan");
-    revalidatePath("/dashboard", "layout");
+    revalidatePath("/dashboard");
     return { ok: true, message: "Profil guru tersimpan." };
   } catch (error) {
     return fail(
@@ -99,7 +99,7 @@ export async function updateNotificationPreferencesAction(input: {
         .where(eq(profiles.id, context.userId));
     });
     revalidatePath("/dashboard/pengaturan");
-    revalidatePath("/dashboard", "layout");
+    revalidatePath("/dashboard");
     return { ok: true, message: "Preferensi notifikasi tersimpan." };
   } catch (error) {
     return fail(
@@ -122,7 +122,7 @@ export async function completeOnboardingAction(): Promise<ActionResult> {
         .set({ onboardingCompleted: true, updatedAt: new Date().toISOString() })
         .where(eq(profiles.id, context.userId));
     });
-    revalidatePath("/dashboard", "layout");
+    revalidatePath("/dashboard");
     return { ok: true, message: "Tur ditandai selesai." };
   } catch (error) {
     return fail(
@@ -144,7 +144,7 @@ export async function resetOnboardingAction(): Promise<ActionResult> {
         .set({ onboardingCompleted: false, updatedAt: new Date().toISOString() })
         .where(eq(profiles.id, context.userId));
     });
-    revalidatePath("/dashboard", "layout");
+    revalidatePath("/dashboard");
     revalidatePath("/dashboard/pengaturan");
     return { ok: true, message: "Tur siap dijalankan ulang." };
   } catch (error) {

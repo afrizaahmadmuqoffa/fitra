@@ -31,7 +31,6 @@ export async function createClassAction(input: unknown): Promise<ActionResult> {
     });
 
     revalidatePath("/dashboard/kelas");
-    revalidatePath("/dashboard", "layout");
     return { ok: true, message: `Kelas ${values.name} dibuat.` };
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Kelas gagal dibuat.");
@@ -65,7 +64,6 @@ export async function updateClassAction(input: {
 
     revalidatePath(`/dashboard/kelas/${input.classId}`);
     revalidatePath("/dashboard/kelas");
-    revalidatePath("/dashboard", "layout");
     return { ok: true, message: "Kelas diperbarui." };
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Kelas gagal diperbarui.");
@@ -80,7 +78,6 @@ export async function deleteClassAction(classId: string): Promise<ActionResult> 
     });
 
     revalidatePath("/dashboard/kelas");
-    revalidatePath("/dashboard", "layout");
     return { ok: true, message: "Kelas dihapus." };
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Kelas gagal dihapus.");

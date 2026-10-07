@@ -227,7 +227,6 @@ export async function saveStudentFormAction(input: {
     if (input.studentId) revalidatePath(`/dashboard/siswa/${input.studentId}`);
     if (input.studentId) revalidatePath(`/dashboard/siswa/${input.studentId}/ubah`);
     revalidatePath("/dashboard/kelas");
-    revalidatePath("/dashboard", "layout");
 
     return {
       ok: true,
@@ -253,7 +252,6 @@ export async function deleteStudentAction(studentId: string): Promise<ActionResu
     });
 
     revalidatePath("/dashboard/siswa");
-    revalidatePath("/dashboard", "layout");
     return { ok: true, message: "Siswa dihapus beserta seluruh datanya." };
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Siswa gagal dihapus.");
@@ -302,7 +300,6 @@ export async function setClassStudentsAction(input: {
     revalidatePath(`/dashboard/kelas/${input.classId}/qr`);
     revalidatePath("/dashboard/kelas");
     revalidatePath("/dashboard/siswa");
-    revalidatePath("/dashboard", "layout");
     return { ok: true, message: "Anggota kelas tersimpan." };
   } catch (error) {
     return fail(

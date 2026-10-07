@@ -175,7 +175,6 @@ export async function reanalyzeMaterialAction(input: unknown): Promise<HasilAksi
 
   revalidatePath(`/dashboard/materi/${materialId}`);
   revalidatePath("/dashboard/materi");
-  revalidatePath("/dashboard", "layout");
 
   return {
     ok: true,
@@ -364,7 +363,6 @@ async function susunVersiBaru(
   revalidatePath(`/dashboard/materi/${materialId}/adaptasi`);
   revalidatePath(`/dashboard/materi/${materialId}`);
   revalidatePath("/dashboard/materi");
-  revalidatePath("/dashboard", "layout");
 
   return {
     ok: true,

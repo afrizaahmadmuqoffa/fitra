@@ -72,7 +72,6 @@ export async function generateTokenAction(
     revalidatePath(`/dashboard/kelas/${classId}/qr`);
     revalidatePath(`/dashboard/kelas/${classId}`);
     revalidatePath("/dashboard/kelas");
-    revalidatePath("/dashboard", "layout");
 
     return {
       ok: true,
@@ -100,7 +99,7 @@ export async function toggleTokenAction(input: {
       if (rows.length === 0) throw new Error("Token tidak ditemukan.");
     });
 
-    revalidatePath("/dashboard/kelas", "layout");
+    revalidatePath("/dashboard/kelas");
     return {
       ok: true,
       message: input.isActive
@@ -123,7 +122,7 @@ export async function extendTokenAction(tokenId: string): Promise<ActionResult> 
         .where(eq(studentAccessTokens.id, tokenId));
     });
 
-    revalidatePath("/dashboard/kelas", "layout");
+    revalidatePath("/dashboard/kelas");
     return { ok: true, message: "Masa berlaku token diperpanjang." };
   } catch (error) {
     return fail(

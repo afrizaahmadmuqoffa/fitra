@@ -195,7 +195,6 @@ export async function createMaterialAction(input: {
 
     revalidatePath("/dashboard/materi");
     revalidatePath("/dashboard/materi/baru");
-    revalidatePath("/dashboard", "layout");
 
     const warning = warnings.length > 0 ? ` ${warnings[0]}` : "";
     return {
@@ -304,7 +303,6 @@ export async function approveAdaptationAction(input: {
     });
 
     revalidatePath("/dashboard/materi");
-    revalidatePath("/dashboard", "layout");
     return { ok: true, message: "Adaptasi disetujui." };
   } catch (error) {
     return fail(
@@ -345,7 +343,7 @@ export async function saveAdaptationAction(input: {
       if (rows.length === 0) throw new Error("Adaptasi tidak ditemukan.");
     });
 
-    revalidatePath("/dashboard/materi", "layout");
+    revalidatePath("/dashboard/materi");
     return { ok: true, message: "Suntingan tersimpan di server." };
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Suntingan gagal disimpan.");
@@ -378,7 +376,7 @@ export async function rejectAdaptationAction(input: {
       if (rows.length === 0) throw new Error("Adaptasi tidak ditemukan.");
     });
 
-    revalidatePath("/dashboard/materi", "layout");
+    revalidatePath("/dashboard/materi");
     return { ok: true, message: "Versi adaptasi ditolak." };
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Adaptasi gagal ditolak.");
@@ -430,7 +428,6 @@ export async function publishMaterialAction(
 
     revalidatePath(`/dashboard/materi/${materialId}`);
     revalidatePath("/dashboard/materi");
-    revalidatePath("/dashboard", "layout");
     return { ok: true, message: "Materi diterbitkan ke siswa." };
   } catch (error) {
     return fail(

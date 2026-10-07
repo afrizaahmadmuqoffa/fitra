@@ -137,7 +137,7 @@ export function CaraKerja() {
           {steps.map((step, i) => (
             <Reveal key={step.title} delay={i * 0.04}>
               <article
-                className={`step relative min-h-[220px] rounded-[21px] border border-border bg-card p-5 md:p-5 ${i < steps.length - 1 ? "after:hidden after:absolute after:-right-[17px] after:top-1/2 after:z-10 after:grid after:size-8 after:-translate-y-1/2 after:place-items-center after:rounded-full after:border after:border-border after:bg-background after:text-muted-foreground after:content-['→'] lg:after:block" : ""}`}
+                className={`step relative min-h-[220px] rounded-[21px] border border-border bg-card p-5 md:p-5 ${i < steps.length - 1 ? "after:absolute after:-right-[17px] after:top-1/2 after:z-10 after:-translate-y-1/2 after:size-8 after:rounded-full after:border after:border-border after:bg-background after:text-muted-foreground after:content-['→'] after:text-[13px] after:font-bold after:hidden lg:after:flex lg:after:items-center lg:after:justify-center" : ""}`}
               >
                 <span className="step-number grid size-8 place-items-center rounded-[11px] bg-[#33635a] text-[11px] font-black text-white">
                   {String(i + 1).padStart(2, "0")}
