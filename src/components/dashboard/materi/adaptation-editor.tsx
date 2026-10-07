@@ -1068,13 +1068,13 @@ export function AdaptationEditor({
           <div
             className={cn(
               "student-surface flex-1 overflow-y-auto px-6 py-5",
-              profile.uiTokens.contrastMode === "high" && "student-contrast",
+              profile?.uiTokens.contrastMode === "high" && "student-contrast",
             )}
             style={{
               "--student-scale":
-                profile.uiTokens.fontSize === "low"
+                profile?.uiTokens.fontSize === "low"
                   ? 1.15
-                  : profile.uiTokens.fontSize === "high"
+                  : profile?.uiTokens.fontSize === "high"
                     ? 1.3
                     : 1,
             } as React.CSSProperties}
@@ -1144,9 +1144,9 @@ export function AdaptationEditor({
               <Badge variant="secondary">{sections.length} bagian</Badge>
               <Badge variant="secondary">{adaptation.adaptedContent.readingLevel}</Badge>
               <Badge variant="secondary">
-                Teks {profile.uiTokens.fontSize === "low" ? "besar (1.15×)" : profile.uiTokens.fontSize === "high" ? "sangat besar (1.3×)" : "normal"}
+                Teks {profile?.uiTokens.fontSize === "low" ? "besar (1.15×)" : profile?.uiTokens.fontSize === "high" ? "sangat besar (1.3×)" : "normal"}
               </Badge>
-              {profile.uiTokens.contrastMode === "high" && (
+              {profile?.uiTokens.contrastMode === "high" && (
                 <Badge variant="secondary">Kontras tinggi</Badge>
               )}
             </div>
