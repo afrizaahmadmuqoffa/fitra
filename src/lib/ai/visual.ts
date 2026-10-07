@@ -100,8 +100,10 @@ function terjemahkanStatus(status: number, badan: string): VisualError {
 }
 
 type OpsiBuatVisual = {
-  /** Prompt lengkap dalam Bahasa Indonesia yang sudah disusun AI. */
+  /** Prompt positif dalam Bahasa Inggris — scene + style tags dari susunPromptGambar(). */
   prompt: string;
+  /** Negative prompt terpisah — tidak dicampur ke prompt positif. */
+  negativePrompt?: string;
   adaptationId: string;
   sectionIndex: number;
   /**
@@ -150,9 +152,11 @@ export async function buatVisual(opsi: OpsiBuatVisual): Promise<HasilVisual> {
     section: opsi.sectionIndex,
   });
 
-  // Default 1024x768 (4:3) paling pas untuk diagram edukatif.
+  // Default 1024x1024 (persegi) optimal untuk ilustrasi edukatif dengan
+  // satu subjek terpusat. Flux bekerja lebih baik pada rasio persegi
+  // dibanding landscape untuk konten subjek tunggal.
   const width = opsi.width ?? 1024;
-  const height = opsi.height ?? 768;
+  const height = opsi.height ?? 1024;
 
   // Setiap permintaan memakai akhiran jalur sendiri supaya tombol "buat
   // ulang" benar-benar menghasilkan berkas baru. Kalau jalurnya hanya
@@ -160,7 +164,13 @@ export async function buatVisual(opsi: OpsiBuatVisual): Promise<HasilVisual> {
   // menyajikan gambar lama dari cache.
   const unik = opsi.nonce ?? crypto.randomUUID().slice(0, 8);
 
-  const urlGambar = await mintaUrlGambar({ prompt, apiKey, width, height });
+  const urlGambar = await mintaUrlGambar({
+    prompt,
+    negativePrompt: opsi.negativePrompt,
+    apiKey,
+    width,
+    height,
+  });
 
   debug.info("gambar diterima dari provider", {
     url: debug.cuplik(urlGambar),
@@ -212,21 +222,25 @@ export async function buatVisual(opsi: OpsiBuatVisual): Promise<HasilVisual> {
 
 async function mintaUrlGambar(input: {
   prompt: string;
+  negativePrompt?: string;
   apiKey: string;
   width: number;
   height: number;
 }): Promise<string> {
   const url = `${DASAR}/v1/images/generations`;
-  const badan = {
+  const badan: Record<string, unknown> = {
     model: MODEL_GAMBAR,
     prompt: input.prompt,
-    response_format: "url" as const,
+    response_format: "url",
     n: 1,
     width: input.width,
     height: input.height,
     nologo: true,
-    enhance: false,
+    enhance: true,
   };
+  if (input.negativePrompt) {
+    badan.negative_prompt = input.negativePrompt;
+  }
 
   let galatTerakhir: unknown = null;
 

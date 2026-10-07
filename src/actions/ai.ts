@@ -25,7 +25,7 @@ import {
 } from "@/db/schema";
 import type { MaterialAnalysis, StudentProfile, DisabilityType } from "@/db/types";
 import { analisisMateri } from "@/lib/ai/analisis";
-import { susunAdaptasi, susunPromptGambar } from "@/lib/ai/adaptasi";
+import { susunAdaptasi, susunPromptGambar, NEGATIVE_PROMPT } from "@/lib/ai/adaptasi";
 import { AiError } from "@/lib/ai/gemini";
 import { VisualError, buatVisual, sidikJariPrompt } from "@/lib/ai/visual";
 import { debug } from "@/lib/ai/debug";
@@ -500,9 +500,8 @@ export async function generateVisualAction(input: unknown): Promise<ActionResult
       const hasil = await buatVisual({
         prompt: susunPromptGambar({
           promptEn: aset.prompt,
-          judulMateri: judulMateri,
-          sectionIndex: sectionIndex,
         }),
+        negativePrompt: NEGATIVE_PROMPT,
         adaptationId,
         sectionIndex,
       });

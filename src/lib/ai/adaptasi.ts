@@ -104,43 +104,38 @@ export async function susunAdaptasi(input: {
 }
 
 /**
- * Membangun prompt Bahasa Inggris siap pakai untuk Pollinations image generation.
+ * Membangun prompt positif Bahasa Inggris siap pakai untuk Pollinations.
  *
- * Flux.1-schnell (dan semua model diffusion) dilatih dengan prompt Bahasa
- * Inggris. Mengirim deskripsi Bahasa Indonesia menghasilkan gambar acak
- * karena model tidak memahami konteksnya.
+ * `promptEn` berisi `scene` dari Gemini — deskripsi subjek, jumlah, warna,
+ * dan konteks dalam satu kalimat. Style ditambahkan di sini oleh server,
+ * bukan dari Gemini, sehingga gaya ilustrasi selalu konsisten.
  *
- * Kolom visual_assets.prompt sudah menyimpan versi Bahasa Inggris sejak
- * INSERT di ai.ts, jadi fungsi ini hanya perlu menerimanya langsung.
- *
- * Format yang efektif untuk Flux adalah dense tag-style: subjek konkret
- * diikuti deskripsi gaya, bukan narasi panjang.
+ * Negative prompt dipisah ke konstanta NEGATIVE_PROMPT dan dikirim
+ * sebagai parameter terpisah ke Pollinations API (no. 4).
  */
+
+/** Negative tags untuk image generation — dikirim sebagai `negative_prompt` terpisah. */
+export const NEGATIVE_PROMPT = [
+  "text, letters, numbers, words, labels, watermark, logo",
+  "photorealism, photograph, 3d render",
+  "dark themes, violence, gore, weapons",
+  "border, frame, vignette",
+  "multiple main subjects, busy background, cluttered scene",
+  "human faces, cartoon people, children figures",
+].join(", ");
+
 export function susunPromptGambar(input: {
-  /** Deskripsi subjek + situasi dalam Bahasa Inggris — isi dari visual_assets.prompt */
+  /** Scene description dalam Bahasa Inggris dari Gemini — subjek, jumlah, warna, konteks. */
   promptEn: string;
-  judulMateri: string;
-  sectionIndex: number;
 }): string {
-  const positive = [
-    // Subjek utama — diletakkan pertama agar bobot CLIP maksimal
+  return [
+    // Scene dari Gemini — diletakkan pertama agar bobot CLIP maksimal
     input.promptEn,
-    // Gaya — ilustrasi buku anak Indonesia
+    // Style dikontrol server — tidak pernah datang dari Gemini
     "flat illustration, Indonesian elementary school textbook style",
-    "hand-drawn, thick black outlines, simple geometric shapes",
+    "thick black outlines, simple geometric shapes",
     "bright cheerful colors, white background",
     "clean composition, single centered main subject",
     "child-friendly educational illustration",
   ].join(", ");
-
-  // Negative tag disisipkan langsung ke prompt positif — Pollinations API
-  // belum expose parameter negative_prompt via /v1/images/generations.
-  const negative = [
-    "no text, no letters, no numbers, no words, no labels",
-    "no photorealism, no dark themes, no violence, no gore",
-    "no watermark, no logo, no border, no frame",
-    "no multiple subjects, no busy background",
-  ].join(", ");
-
-  return `${positive}, ${negative}`;
 }

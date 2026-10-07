@@ -137,7 +137,6 @@ const zInteraksiAi = z.object({
 const zPermintaanVisualAi = z.object({
   subject: z.string().min(3).max(200),
   scene: z.string().min(3).max(400),
-  style: z.string().min(3).max(200),
   safetyConstraints: z.string().max(300),
   altText: z.string().min(8).max(300),
 });
@@ -249,38 +248,47 @@ export const SKEMA_ADAPTASI: Record<string, unknown> = {
             type: "object",
             nullable: true,
             description:
-              "Detail ilustrasi jika hasVisual true, null jika tidak butuh gambar.",
+              "Detail ilustrasi jika hasVisual true, null jika tidak butuh gambar. " +
+              "Hanya buat gambar bila objeknya benar-benar tidak bisa dipahami tanpa visual — " +
+              "misalnya bentuk, warna, jumlah, atau posisi objek konkret. " +
+              "Jangan buat gambar untuk penjelasan abstrak, definisi, atau aturan.",
             properties: {
               subject: {
                 type: "string",
                 description:
-                  "The main object to draw, in English, concrete and singular. Example: 'three red number cards', 'a green frog'.",
+                  "The single concrete object to illustrate, in English. " +
+                  "Must be ONE specific physical object or set of identical objects — not a scene, activity, or concept. " +
+                  "No humans, faces, or cartoon characters. No abstract ideas. " +
+                  "Good: 'five red apples', 'a blue triangle'. " +
+                  "Bad: 'children learning', 'a classroom', 'the concept of addition'.",
               },
               scene: {
                 type: "string",
                 description:
-                  "Complete scene description in English: what the object looks like, how many, what color, what background. Example: 'three red number cards showing 1, 2, 3 arranged in a row on white background'.",
-              },
-              style: {
-                type: "string",
-                description:
-                  "Illustration style in English. Always use: 'flat illustration, Indonesian elementary school textbook style, thick black outlines'.",
+                  "Complete description of the illustration in English, in one sentence. " +
+                  "Must include: (1) the exact object from subject, (2) quantity if countable, (3) specific colors, (4) simple background. " +
+                  "No humans, faces, body parts, or characters. No text, numbers, or letters in the image. " +
+                  "Keep it simple — one main object, plain background. " +
+                  "Good: 'five red apples arranged in a row on a white background'. " +
+                  "Bad: 'a teacher showing apples to students in a colorful classroom'.",
               },
               safetyConstraints: {
                 type: "string",
                 description:
-                  "Batasan untuk gambar yang aman dilihat anak. Boleh kosong bila tidak ada.",
+                  "Safety constraints for child-safe image. Leave empty string if none needed. " +
+                  "Example: 'no sharp objects, no fire, no animals that may scare children'.",
               },
               altText: {
                 type: "string",
                 description:
-                  "Deskripsi gambar untuk pembaca layar, satu-dua kalimat, menyebut objek dan jumlah.",
+                  "Screen reader description in Bahasa Indonesia, one to two sentences. " +
+                  "Must mention the object, quantity, and color. " +
+                  "Example: 'Lima apel merah tersusun berjajar di atas latar putih.'",
               },
             },
             required: [
               "subject",
               "scene",
-              "style",
               "safetyConstraints",
               "altText",
             ],
@@ -317,14 +325,11 @@ export function keAdaptedContent(
     const media: AdaptedMedia[] = [];
     if (bagian.hasVisual && bagian.visualSpec) {
       media.push({ assetId: null, altText: bagian.visualSpec.altText.trim() });
-      // subject dan scene sudah dalam Bahasa Inggris karena JSON Schema minta Inggris.
-      // Gabungkan menjadi satu prompt Inggris siap pakai untuk Pollinations.
-      const promptEn = [
-        bagian.visualSpec.subject.trim(),
-        bagian.visualSpec.scene.trim(),
-      ]
-        .filter(Boolean)
-        .join(", ");
+      // Hanya pakai `scene` sebagai prompt — scene sudah mencakup subjek,
+      // jumlah, warna, dan konteks lengkap. Menggabungkan subject + scene
+      // menghasilkan duplikasi informasi yang membingungkan model diffusion.
+      // subject disimpan di visualSpec untuk referensi/debug tapi tidak masuk prompt.
+      const promptEn = bagian.visualSpec.scene.trim();
       requests.push({
         sectionIndex,
         promptEn,

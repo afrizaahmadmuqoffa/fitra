@@ -7,8 +7,91 @@ import type {
 } from "@/db/types";
 
 // =========================================================
-// SNAPSHOT PROFIL
+// KLASIFIKASI HAMBATAN
 // =========================================================
+
+/**
+ * Tiga kategori hambatan berdasarkan dampaknya terhadap pemrosesan konten.
+ *
+ * Kategori ini menentukan apakah konten perlu disederhanakan, atau hanya
+ * cara penyajian dan interaksi yang perlu disesuaikan.
+ *
+ * - KOGNITIF: hambatan mempengaruhi pemrosesan informasi dan penalaran.
+ *   Konten perlu disederhanakan sesuai tingkat akademik.
+ *
+ * - KOMUNIKASI: hambatan pada jalur sensorik (pendengaran/penglihatan)
+ *   atau produksi bahasa ekspresif. Kapasitas kognitif tidak terdampak.
+ *   Konten dipertahankan — yang diubah hanya modalitas penyampaian.
+ *
+ * - FISIK_MOTORIK: hambatan pada gerak dan kontrol tubuh. Kapasitas
+ *   kognitif tidak terdampak. Konten dipertahankan — yang diubah hanya
+ *   cara interaksi dan target sentuh.
+ *
+ * - CAMPURAN: kombinasi dua hambatan atau lebih, atau hambatan yang belum
+ *   terklasifikasi. Keputusan simplifikasi diserahkan ke profil akademik.
+ */
+export type KategoriHambatan =
+  | "KOGNITIF"
+  | "KOMUNIKASI"
+  | "FISIK_MOTORIK"
+  | "CAMPURAN";
+
+export const KATEGORI_HAMBATAN: Record<DisabilityType, KategoriHambatan> = {
+  // Hambatan kognitif — konten perlu disederhanakan per tingkat akademik
+  tunagrahita: "KOGNITIF",
+  autis: "KOGNITIF",
+
+  // Hambatan komunikasi sensorik/ekspresif — konten dipertahankan
+  tunanetra: "KOMUNIKASI",
+  tunarungu: "KOMUNIKASI",
+  tunawicara: "KOMUNIKASI",
+
+  // Hambatan fisik motorik — konten dipertahankan
+  tunadaksa: "FISIK_MOTORIK",
+  tunalaras: "FISIK_MOTORIK",
+
+  // Campuran atau belum terklasifikasi — ikuti profil akademik
+  tunaganda: "CAMPURAN",
+  lainnya: "CAMPURAN",
+};
+
+/**
+ * Apakah hambatan ini memerlukan penyederhanaan konten?
+ *
+ * Hanya KOGNITIF yang perlu disederhanakan. KOMUNIKASI dan FISIK_MOTORIK
+ * memiliki kapasitas kognitif normal — menyederhanakan konten mereka justru
+ * merendahkan kemampuan dan mengurangi kualitas belajar.
+ *
+ * Untuk CAMPURAN, keputusan diserahkan ke tingkat akademik aktual siswa.
+ */
+export function perluSederhanakanKonten(
+  kategori: KategoriHambatan,
+  tingkatAkademik: SkillLevel,
+): boolean {
+  if (kategori === "KOGNITIF") return true;
+  if (kategori === "CAMPURAN") return tingkatAkademik === "low";
+  // KOMUNIKASI dan FISIK_MOTORIK tidak perlu penyederhanaan konten
+  return false;
+}
+
+/**
+ * Label deskriptif untuk kategori hambatan — dipakai dalam prompt ke model.
+ */
+export const LABEL_KATEGORI: Record<KategoriHambatan, string> = {
+  KOGNITIF:
+    "Hambatan kognitif — penyederhanaan bahasa dan konten berlaku sesuai tingkat akademik.",
+  KOMUNIKASI:
+    "Hambatan komunikasi sensorik atau ekspresif — kapasitas kognitif tidak terdampak. " +
+    "Pertahankan kedalaman dan kompleksitas konten. Yang diubah hanya modalitas penyampaian dan interaksi.",
+  FISIK_MOTORIK:
+    "Hambatan fisik motorik — kapasitas kognitif tidak terdampak. " +
+    "Pertahankan kedalaman dan kompleksitas konten. Yang diubah hanya cara interaksi dan ukuran target sentuh.",
+  CAMPURAN:
+    "Kombinasi hambatan atau hambatan belum terklasifikasi. " +
+    "Sesuaikan konten berdasarkan profil akademik aktual. Jangan mengasumsikan hambatan kognitif " +
+    "bila profil akademik menunjukkan kemampuan sedang atau tinggi.",
+};
+
 
 /**
  * Bentuk profil yang dikirim ke model.
@@ -106,6 +189,8 @@ export function keSnapshotProfil(
 
 /** Ringkasan profil dalam kalimat, untuk dibaca model. */
 export function ringkasProfil(profil: SnapshotProfil): string {
+  const kategori = KATEGORI_HAMBATAN[profil.jenisHambatan];
+
   const sosial = [
     `mengenali orang ${profil.sosialEmosional.mengenaliOrang}`,
     `bekerja sama ${profil.sosialEmosional.bekerjaSama}`,
@@ -121,7 +206,7 @@ export function ringkasProfil(profil: SnapshotProfil): string {
     `memakai alat ${profil.kemandirian.menggunakanAlat}`,
   ].join(", ");
 
-  return [
+  const baris: string[] = [
     `tingkat akademik ${profil.tingkatAkademik}`,
     `membaca ${profil.membaca}, menulis ${profil.menulis}, berhitung ${profil.berhitung}`,
     sosial,
@@ -134,105 +219,152 @@ export function ringkasProfil(profil: SnapshotProfil): string {
     `audio aktif ${profil.tokenAntarmuka.audioAktif ? "ya" : "tidak"}`,
     `kecepatan audio ${profil.tokenAntarmuka.kecepatanAudio}`,
     `gaya navigasi ${profil.tokenAntarmuka.gayaNavigasi}`,
-    `kesulitan membaca kalimat panjang, setara kemampuan menulis ${labelLevel(profil.menulis)}`,
-  ].join("; ");
+  ];
+
+  // Hanya tambahkan catatan kesulitan membaca bila hambatannya kognitif/campuran
+  // DAN kemampuan membaca memang rendah. Untuk hambatan komunikasi/fisik,
+  // baris ini tidak relevan dan justru menyesatkan model.
+  if (
+    (kategori === "KOGNITIF" || kategori === "CAMPURAN") &&
+    profil.membaca === "low"
+  ) {
+    baris.push("kesulitan membaca kalimat panjang — gunakan kalimat sangat pendek");
+  }
+
+  return baris.join("; ");
 }
 
 // =========================================================
 // ATURAN BAHASA
 // =========================================================
 
-/** Batas panjang kalimat per tingkat akademik. */
-export const BATAS_KATA_KALIMAT: Record<SkillLevel, number> = {
-  low: 8,
-  medium: 14,
-  high: 22,
-};
+/**
+ * Panduan bahasa berdasarkan tingkat akademik dan kategori hambatan.
+ *
+ * Batasan numerik (N kata) dihapus karena model cenderung memotong kalimat
+ * secara mekanis saat diberi angka, sehingga justru merusak alur penjelasan.
+ * Panduan kualitatif lebih efektif karena model dapat menyesuaikan per kalimat.
+ *
+ * Untuk hambatan non-kognitif (KOMUNIKASI, FISIK_MOTORIK), tidak ada aturan
+ * penyederhanaan — cukup bahasa Indonesia yang baik dan sesuai usia sekolah.
+ */
+function aturanBahasa(level: SkillLevel, kategori: KategoriHambatan): string {
+  // Non-kognitif: tidak perlu panduan simplifikasi apapun
+  if (kategori === "KOMUNIKASI" || kategori === "FISIK_MOTORIK") {
+    return [
+      "- Gunakan bahasa Indonesia yang baik, lugas, dan sesuai usia sekolah.",
+      "- Istilah teknis boleh dipakai selama diberi penjelasan singkat.",
+      "- Tidak ada batasan panjang kalimat — tulis senatural mungkin.",
+    ].join("\n");
+  }
 
-function aturanBahasa(level: SkillLevel): string {
+  // Kognitif low: penyederhanaan maksimal
   if (level === "low") {
     return [
-      "- Tiap kalimat maksimal 8 kata.",
-      "- Tiap kalimat hanya satu klausa.",
-      "- Jangan memakai kata penghubung seperti karena, sehingga, tetapi, atau lalu.",
-      "- Pakai kata benda konkret dan kata kerja sederhana.",
-      "- Kalau ada dua ide, pecah jadi dua kalimat.",
+      "- Gunakan kalimat yang sangat pendek. Satu kalimat = satu ide.",
+      "- Hindari anak kalimat (klausa yang diawali karena, sehingga, walaupun, agar).",
+      "- Pakai kata benda konkret dan kata kerja sederhana yang dikenal sehari-hari.",
+      "- Kalau ada dua ide berbeda, pecah menjadi dua kalimat terpisah.",
+      "- Ulangi kata kunci penting di kalimat yang berbeda.",
     ].join("\n");
   }
+
+  // Kognitif high: struktur lengkap, tetap mudah dibaca
   if (level === "high") {
     return [
-      "- Tiap kalimat maksimal 22 kata.",
-      "- Boleh memakai satu klausa anak untuk menunjukkan hubungan sebab-akibat.",
-      "- Tetap pakai kata yang lazim dipakai anak usia sekolah.",
-      "- Hindari istilah teknis tanpa penjelasan.",
+      "- Kalimat boleh memiliki satu klausa anak untuk menunjukkan hubungan sebab-akibat.",
+      "- Pakai kata yang lazim dipakai anak usia sekolah.",
+      "- Istilah teknis boleh dipakai selama diberi penjelasan singkat.",
+      "- Struktur kalimat tidak perlu disederhanakan secara paksa.",
     ].join("\n");
   }
+
+  // Kognitif medium (termasuk CAMPURAN yang perlu disederhanakan)
   return [
-    "- Tiap kalimat maksimal 14 kata.",
-    "- Tiap kalimat boleh satu klausa anak sebagai penjelasan tambahan.",
-    "- Pakai kosakata sehari-hari.",
+    "- Kalimat sedang panjangnya — hindari lebih dari satu klausa anak per kalimat.",
+    "- Pakai kosakata sehari-hari yang familiar.",
     "- Hindari istilah teknis tanpa penjelasan.",
+    "- Satu paragraf = satu konsep.",
   ].join("\n");
 }
 
 /**
  * Aturan tambahan per jenis hambatan.
  *
- * Ini bagian yang paling menentukan. Anak dengan kebutuhan berbeda
- * membutuhkan dukungan berbeda, bukan sekadar kalimat yang lebih pendek.
+ * Setiap aturan difokuskan pada dampak spesifik hambatan terhadap cara
+ * belajar — bukan generalisasi. Hambatan non-kognitif secara eksplisit
+ * menegaskan bahwa kedalaman konten harus dipertahankan.
  */
 const ATURAN_HAMBATAN: Record<DisabilityType, string[]> = {
   tunanetra: [
-    "- Anak tidak dapat melihat gambar, jadi keterangan visual wajib ditulis lengkap di teks.",
-    "- Jangan menulis kalimat seperti pada gambar atau lihat warna di atas.",
-    "- Tulis informasi visual langsung di dalam kalimat.",
-    "- Alt text wajib menyebut jumlah, warna, dan posisi objek.",
-    "- Naskah audio menjadi jalur informasi utama dan harus berdiri sendiri.",
+    "- Hambatan bersifat sensorik visual. Kapasitas kognitif tidak terdampak — pertahankan kedalaman dan kompleksitas konten.",
+    "- Anak tidak dapat melihat gambar. Jangan membuat gambar (hasVisual harus false untuk semua bagian).",
+    "- Jangan menulis referensi visual seperti 'pada gambar', 'lihat warna di atas', atau 'seperti yang terlihat'.",
+    "- Tulis semua informasi yang biasanya disampaikan lewat gambar langsung ke dalam teks kalimat.",
+    "- Naskah audio menjadi jalur informasi utama dan harus benar-benar berdiri sendiri tanpa perlu melihat layar.",
+    "- Alt text tidak diperlukan karena gambar tidak dibuat.",
   ],
   tunarungu: [
-    "- Visual adalah jalur utama. Anak tidak dapat mendengar audio sama sekali.",
-    "- Semua informasi wajib ditulis di teks, jangan hanya di audio.",
-    "- Pakai kalimat pendek dan tanda baca yang jelas.",
-    "- Sertakan gambar atau ilustrasi untuk setiap konsep penting.",
-    "- Jangan bergantung pada audio untuk menyampaikan informasi apapun.",
+    "- Hambatan bersifat sensorik pendengaran. Kapasitas kognitif tidak terdampak — pertahankan kedalaman dan kompleksitas konten.",
+    "- Anak tidak dapat mendengar audio. Visual adalah jalur informasi utama.",
+    "- Semua informasi wajib ada di teks tertulis — jangan mengandalkan naskah audio untuk menyampaikan informasi apapun.",
+    "- Sertakan gambar atau ilustrasi untuk setiap konsep penting agar pemahaman tidak bergantung pada teks panjang.",
     "- Ulangi kata kunci penting di teks tertulis, bukan hanya di naskah audio.",
+    "- Naskah audio tetap ditulis untuk kelengkapan data, tetapi bukan jalur utama — jangan menempatkan informasi eksklusif di sana.",
   ],
   tunagrahita: [
-    "- Pakai contoh konkret dan angka nyata, bukan definisi.",
-    "- Pecah pekerjaan menjadi urutan satu per satu.",
-    "- Ulangi konsep utama di bagian berbeda.",
-    "- Hindari kalimat yang menuntut penalaran lebih dari satu langkah.",
+    "- Hambatan kognitif — terapkan penyederhanaan konten sesuai tingkat akademik.",
+    "- Pakai contoh konkret dan angka nyata, hindari definisi abstrak.",
+    "- Pecah setiap pekerjaan atau langkah menjadi urutan satu per satu.",
+    "- Ulangi konsep utama di bagian yang berbeda dengan cara yang berbeda.",
+    "- Hindari kalimat yang menuntut penalaran lebih dari satu langkah sekaligus.",
+    "- Gunakan situasi yang dekat dengan kehidupan sehari-hari anak.",
   ],
   tunadaksa: [
-    "- Pilihan jawaban dibuat pendek dan sering disertai gambar.",
-    "- Utamakan menekan pilihan besar, jangan menyeret.",
-    "- Satu instruksi per baris supaya mudah dibaca sekilas.",
+    "- Hambatan bersifat fisik motorik. Kapasitas kognitif tidak terdampak — pertahankan kedalaman dan kompleksitas konten.",
+    "- Pilihan jawaban dibuat pendek agar mudah dibaca sekilas.",
+    "- Utamakan interaksi menekan pilihan (tap) — hindari aktivitas menyeret (drag) kecuali profil interaksi mengizinkan.",
+    "- Satu instruksi per baris supaya mudah dipindai mata.",
+    "- Jangan membuat aktivitas yang membutuhkan ketepatan gerakan halus.",
   ],
   autis: [
-    "- Pakai bahasa yang harfiah, hindari kiasan dan lelucon.",
-    "- Jangan menulis aku atau kalian. Pakai kamu.",
-    "- Beri satu instruksi per kalimat.",
-    "- Sebutkan urutan secara terbuka: pertama, lalu, terakhir.",
-    "- Jangan memberi instruksi yang bergantung pada keadaan di luar layar.",
+    "- Hambatan kognitif dan sosial-komunikasi — terapkan penyederhanaan sesuai tingkat akademik.",
+    "- Pakai bahasa yang harfiah dan literal — hindari kiasan, sarkasme, humor implisit, dan ungkapan idiomatik.",
+    "- Pakai kata 'kamu', bukan 'aku', 'kalian', atau sapaan tidak langsung.",
+    "- Satu instruksi per kalimat — jangan menggabungkan dua perintah dalam satu kalimat.",
+    "- Sebutkan urutan langkah secara eksplisit: pertama, lalu, kemudian, terakhir.",
+    "- Jangan memberi instruksi yang bergantung pada situasi di luar layar atau asumsi konteks sosial.",
+    "- Struktur yang konsisten dan dapat diprediksi lebih penting dari variasi.",
   ],
   tunawicara: [
-    "- Tawarkan beberapa cara menjawab yang setara.",
-    "- Jangan mengasumsikan anak dapat melafalkan kata tertentu.",
-    "- Jawaban tetap harus bisa diberikan dengan menekan pilihan.",
+    "- Hambatan bersifat komunikasi ekspresif (produksi suara/bicara). Kapasitas kognitif tidak terdampak — pertahankan kedalaman dan kompleksitas konten.",
+    "- Tawarkan semua cara menjawab yang tersedia dan setara nilainya — anak tidak boleh dirugikan karena tidak bisa berbicara.",
+    "- Jangan mengasumsikan anak dapat melafalkan atau mengucapkan kata tertentu.",
+    "- Setiap aktivitas harus bisa diselesaikan dengan menekan pilihan (tap) meski mode interaksi lain tersedia.",
+    "- Jangan membuat aktivitas yang mensyaratkan jawaban suara sebagai satu-satunya pilihan.",
   ],
   tunalaras: [
-    "- Pakai nada tenang dan susunan yang rapi.",
-    "- Beri urutan yang jelas dan bisa diprediksi.",
-    "- Hindari kalimat yang menantang atau membandingkan antar anak.",
+    "- Hambatan bersifat emosi dan perilaku. Kapasitas kognitif tidak terdampak — pertahankan kedalaman dan kompleksitas konten.",
+    "- Gunakan nada yang tenang, hangat, dan konsisten — hindari nada menggurui atau menantang.",
+    "- Beri urutan langkah yang jelas dan dapat diprediksi — ketidakpastian dapat memicu frustrasi.",
+    "- Hindari kalimat yang membandingkan anak dengan orang lain atau menyiratkan penilaian negatif.",
+    "- Gunakan konteks yang relevan dan dekat dengan kehidupan anak agar materi terasa bermakna.",
+    "- Beri penghargaan verbal yang tulus di prompt aktivitas ('Coba yuk!' bukan 'Kalau kamu pintar...').",
+    "- Hindari konten yang bisa memicu frustrasi — instruksi yang ambigu, soal yang terlalu panjang, atau pilihan yang membingungkan.",
   ],
   tunaganda: [
-    "- Jelaskan simbol dan warna dengan kata yang jelas.",
-    "- Hindari penyamaan yang terlalu jauh.",
-    "- Beri contoh berulang untuk setiap simbol.",
+    "- Kombinasi dua hambatan atau lebih. Sesuaikan konten berdasarkan profil akademik aktual, bukan asumsi.",
+    "- Bila profil akademik tinggi atau sedang, pertahankan kedalaman konten — jangan menyederhanakan tanpa alasan.",
+    "- Bila profil akademik rendah, terapkan penyederhanaan seperti tunagrahita.",
+    "- Kombinasikan aturan dari hambatan yang relevan: bila ada komponen sensorik (tunanetra/tunarungu), terapkan aturan modalitas mereka.",
+    "- Bila ada komponen fisik (tunadaksa), terapkan aturan interaksi tunadaksa.",
+    "- Prioritaskan mode interaksi yang paling dapat diandalkan sesuai profil siswa.",
   ],
   lainnya: [
-    "- Pakai bahasa sederhana dan susunan yang jelas.",
-    "- Beri contoh konkret.",
+    "- Jenis hambatan tidak terklasifikasi. Jangan mengasumsikan hambatan kognitif.",
+    "- Sesuaikan kompleksitas konten semata-mata berdasarkan profil akademik aktual siswa.",
+    "- Sesuaikan cara interaksi berdasarkan mode interaksi yang tersedia di profil.",
+    "- Gunakan bahasa Indonesia yang baik dan sesuai usia sekolah.",
   ],
 };
 
@@ -302,6 +434,27 @@ export const SISTEM_ADAPTASI = [
   "5. Jangan menulis seperti hasil sudah disetujui.",
   "6. Bila materi sumber kurang jelas di suatu titik, tahan dengan kalimat umum. Jangan mengarang detail.",
   "",
+  "PRINSIP ADAPTASI — BACA SEBELUM MENGERJAKAN:",
+  "Adaptasi bukan berarti selalu menyederhanakan. Ada tiga jenis hambatan dengan kebutuhan yang sangat berbeda:",
+  "",
+  "1. HAMBATAN KOGNITIF (tunagrahita, autis):",
+  "   Hambatan mempengaruhi pemrosesan informasi dan penalaran.",
+  "   → Sederhanakan bahasa dan konten sesuai tingkat akademik yang tercantum di profil.",
+  "",
+  "2. HAMBATAN KOMUNIKASI (tunanetra, tunarungu, tunawicara):",
+  "   Hambatan pada jalur sensorik atau produksi suara. Kapasitas kognitif TIDAK terdampak.",
+  "   → PERTAHANKAN kedalaman dan kompleksitas konten seperti materi aslinya.",
+  "   → Yang diubah HANYA modalitas penyampaian (visual/audio) dan cara menjawab.",
+  "   → Jangan menyederhanakan konten hanya karena anak tidak bisa melihat, mendengar, atau berbicara.",
+  "",
+  "3. HAMBATAN FISIK MOTORIK (tunadaksa, tunalaras):",
+  "   Hambatan pada gerak dan kontrol tubuh. Kapasitas kognitif TIDAK terdampak.",
+  "   → PERTAHANKAN kedalaman dan kompleksitas konten seperti materi aslinya.",
+  "   → Yang diubah HANYA cara interaksi dan ukuran target sentuh.",
+  "",
+  "Profil siswa mencantumkan jenis hambatan dan tingkat akademik. Gunakan keduanya bersama.",
+  "Jangan pernah menyederhanakan konten semata-mata karena nama hambatannya.",
+  "",
   "ATURAN BAHASA:",
   "- Tulis seluruh isi dalam bahasa Indonesia yang hangat, lugas, dan mudah dibaca.",
   "- Sapa anak dengan kata kamu, bukan aku atau kalian.",
@@ -362,11 +515,13 @@ export const SISTEM_ADAPTASI = [
   "- Ajukan permintaan gambar hanya untuk bagian yang benar-benar tidak bisa dipahami tanpa gambar.",
   "- Materi penjelasan, definisi, aturan, dan perumpamaan tidak butuh gambar.",
   "- Boleh kosong. Lebih baik kosong daripada gambar yang tidak membantu.",
-  "- Alt text wajib menjelaskan objek, jumlah, dan warna dalam satu sampai dua kalimat.",
-  "- Obyek utama harus satu dan konkret, bukan gabungan beberapa obyek.",
-  "- Situasi wajib lengkap dengan jumlah dan warna bila itu bagian dari materi.",
+  "- Objek utama harus satu, konkret, dan fisik — bukan adegan, aktivitas, atau konsep abstrak.",
+  "- Dilarang keras: manusia, wajah, karakter kartun, atau bagian tubuh dalam gambar apapun.",
+  "- Dilarang keras: tulisan, angka, huruf, atau label di dalam gambar.",
+  "- Scene wajib menyebut objek, jumlah (jika bisa dihitung), warna, dan latar belakang sederhana.",
+  "- Alt text wajib menjelaskan objek, jumlah, dan warna dalam satu sampai dua kalimat bahasa Indonesia.",
   "- Batasan keselamatan wajib menyebut larangan gambar yang tidak aman untuk anak.",
-  "- Jangan meminta gambar yang berisi tulisan, angka, atau huruf.",
+  "- Gaya ilustrasi ditentukan sistem — tidak perlu diisi, tidak ada field style di skema.",
   "",
   "FORMAT KELUARAN:",
   "Keluarkan hanya JSON yang sesuai skema. Tanpa penjelasan tambahan.",
@@ -374,11 +529,15 @@ export const SISTEM_ADAPTASI = [
 
 /** Bagian profil yang dikirim ke model. */
 function blokProfil(profil: SnapshotProfil): string {
+  const kategori = KATEGORI_HAMBATAN[profil.jenisHambatan];
   return [
     "SNAPSHOT PROFIL BELAJAR ANAK (tanpa data identitas):",
     ringkasProfil(profil),
     "",
-    "ATURAN TAMBAHAN UNTUK JENIS HAMBATAN INI:",
+    `KATEGORI HAMBATAN: ${kategori}`,
+    LABEL_KATEGORI[kategori],
+    "",
+    "ATURAN SPESIFIK UNTUK JENIS HAMBATAN INI:",
     ...ATURAN_HAMBATAN[profil.jenisHambatan],
   ].join("\n");
 }
@@ -396,7 +555,7 @@ export function bangunPromptAdaptasi(input: {
   analisis: MaterialAnalysis | null;
   profil: SnapshotProfil;
 }): string {
-  const batas = BATAS_KATA_KALIMAT[input.profil.tingkatAkademik];
+  const kategori = KATEGORI_HAMBATAN[input.profil.jenisHambatan];
 
   const bagianDenganHintVisual =
     input.analisis?.structure.map((bagian, idx) => {
@@ -415,12 +574,11 @@ export function bangunPromptAdaptasi(input: {
     "",
     `Judul materi: ${input.judul}`,
     `Mata pelajaran: ${input.mapel}`,
-    `Batas panjang kalimat untuk anak ini: ${batas} kata per kalimat.`,
     "",
     blokProfil(input.profil),
     "",
-    "KESULITAN BAHASA YANG HARUS DIPAKAI:",
-    aturanBahasa(input.profil.tingkatAkademik),
+    "PANDUAN BAHASA YANG HARUS DIPAKAI:",
+    aturanBahasa(input.profil.tingkatAkademik, kategori),
     "",
     ...(input.analisis
       ? [
@@ -436,13 +594,15 @@ export function bangunPromptAdaptasi(input: {
     "",
     "TUGASMU:",
     "1. Pecah materi menjadi bagian-bagian kecil yang masing-masing satu konsep.",
-    "2. Tulis ulang setiap penjelasan dengan urutan: gambaran umum → contoh konkret → kaitan kehidupan sehari-hari, menggunakan tingkat bahasa anak ini.",
+    kategori === "KOGNITIF" || (kategori === "CAMPURAN" && perluSederhanakanKonten(kategori, input.profil.tingkatAkademik))
+      ? "2. Tulis ulang setiap penjelasan dengan bahasa yang sesuai tingkat akademik anak — gunakan contoh konkret, pecah langkah per langkah, dan hindari abstraksi."
+      : "2. Tulis ulang setiap penjelasan dengan MEMPERTAHANKAN kedalaman dan kompleksitas konten aslinya — hanya sesuaikan modalitas penyajian dan cara interaksi.",
     "3. Pastikan setiap bagian memiliki 3–6 kalimat penjelasan yang cukup lengkap, bukan hanya definisi.",
     "4. Tulis naskah audio untuk tiap bagian yang mencakup SELURUH isi — anak yang hanya mendengar harus memahami semuanya.",
     "5. Tambahkan aktivitas di setiap bagian yang mengandung konsep penting (bukan hanya satu aktivitas untuk seluruh materi).",
     "6. Lengkapi daftar jawaban yang diterima dengan semua variasi jawaban yang mungkin.",
-    "7. Ajukan permintaan gambar hanya untuk bagian yang benar-benar butuh, sesuai preferensi belajar anak ini.",
-    "8. Tulis catatan adaptasi yang menjelaskan apa yang diubah dan mengapa, agar guru bisa menilai dengan cepat.",
+    "7. Ajukan permintaan gambar hanya untuk bagian yang benar-benar butuh, sesuai preferensi belajar dan jenis hambatan anak ini.",
+    "8. Tulis catatan adaptasi yang menjelaskan apa yang diubah dan mengapa — khususnya bila konten dipertahankan, jelaskan bahwa hambatannya bukan kognitif.",
     "",
     "Ingat: hasil ini ditinjau guru sebelum dipakai siswa.",
     "Keluarkan hanya JSON yang sesuai skema.",

@@ -73,7 +73,7 @@ export function DashboardSidebar({
             aria-hidden
             width={32}
             height={32}
-            className="size-8 shrink-0 rounded-[10px] shadow-[0_4px_10px_rgba(0,0,0,0.15)]"
+            className="size-8 shrink-0 rounded-[10px] bg-white shadow-[0_4px_10px_rgba(0,0,0,0.15)] dark:bg-white/15"
           />
           {!collapsed && <span className="truncate">{APP_NAME}</span>}
         </Link>

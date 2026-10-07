@@ -21,6 +21,8 @@ import {
   CheckCircle2,
   GraduationCap,
   Sparkles,
+  Upload,
+  UserPlus,
   Users,
 } from "lucide-react";
 
@@ -67,6 +69,7 @@ export default async function DashboardPage() {
                 href="/dashboard/siswa/baru"
                 data-tour="aksi-siswa"
               >
+                <UserPlus />
                 Tambah siswa
               </Link>
             </Button>
@@ -75,6 +78,7 @@ export default async function DashboardPage() {
                 href="/dashboard/materi/baru"
                 data-tour="aksi-materi"
               >
+                <Upload />
                 Unggah materi
               </Link>
             </Button>

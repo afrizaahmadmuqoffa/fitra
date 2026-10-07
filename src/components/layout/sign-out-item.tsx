@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import * as React from "react";
+import { LogOut } from "lucide-react";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { signOutAction } from "@/actions/auth";
 import { jalankanAction } from "@/lib/action-helpers";
@@ -30,6 +31,7 @@ export function SignOutItem() {
         router.refresh();
       }}
     >
+      <LogOut aria-hidden />
       Keluar
     </DropdownMenuItem>
   );
