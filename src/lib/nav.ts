@@ -2,8 +2,8 @@ import {
   BookOpen,
   ChartNoAxesColumn,
   FileText,
-  Gauge,
   GraduationCap,
+  LayoutDashboard,
   Settings,
   Users,
   type LucideIcon,
@@ -23,7 +23,7 @@ export const dashboardNav: NavItem[] = [
   {
     label: "Dasbor",
     href: "/dashboard",
-    icon: Gauge,
+    icon: LayoutDashboard,
     description: "Ringkasan kelas dan aktivitas",
   },
   {

@@ -50,24 +50,24 @@ export function KelasToolbar({ grade }: { grade: string }) {
   });
   const selectedGrade = useWatch({ control: form.control, name: "grade" });
 
-async function onSubmit(values: ClassInput) {
+  async function onSubmit(values: ClassInput) {
     setPending(true);
+    // Navigasi optimis: langsung pindah halaman, action jalan di background
+    setOpen(false);
+    form.reset();
+    router.push("/dashboard/kelas");
     try {
       const result = await jalankanAction(() => createClassAction(values));
-
       if (!result.ok) {
         toast.error("Kelas belum tersimpan", { description: result.message });
+        router.refresh(); // refresh untuk sinkron ulang jika gagal
         return;
       }
-
       toast.success(result.message, {
         description:
           "Siswa dan materi bisa ditambahkan dari halaman kelas ini. QR pribadi dibuat dari halaman kartu QR kelas.",
       });
-      setOpen(false);
-      form.reset();
-      router.push("/dashboard/kelas");
-      router.refresh();
+      router.refresh(); // refresh setelah sukses untuk tampilkan data baru
     } finally {
       setPending(false);
     }

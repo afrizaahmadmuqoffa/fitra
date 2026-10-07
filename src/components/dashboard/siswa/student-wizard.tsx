@@ -293,6 +293,9 @@ export function StudentWizard({
 
   async function onSubmit(input: StudentFormValues) {
     setPending(true);
+    // Navigasi optimis: langsung pindah sebelum menunggu DB
+    const targetPath = isEdit ? `/dashboard/siswa/${student?.id}` : "/dashboard/siswa";
+    router.push(targetPath);
     try {
       const result = await jalankanAction(() =>
         saveStudentFormAction({ studentId: student?.id, values: input }),
@@ -303,6 +306,7 @@ export function StudentWizard({
           isEdit ? "Perubahan belum tersimpan" : "Siswa belum tersimpan",
           { description: result.message },
         );
+        router.refresh();
         return;
       }
 
@@ -316,8 +320,6 @@ export function StudentWizard({
             ? `Kelas: ${kelas.join(", ")}. Profil belajar siap jadi bahan adaptasi materi.`
             : "Profil belajar siap jadi bahan adaptasi. Tambahkan siswa ke kelas agar bisa mendapat akses QR.",
       });
-
-      router.push(isEdit ? `/dashboard/siswa/${student?.id}` : "/dashboard/siswa");
       router.refresh();
     } finally {
       setPending(false);

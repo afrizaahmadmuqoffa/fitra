@@ -51,7 +51,6 @@ export function StudentActions({ student }: { student: Student }) {
     setDeleteOpen(false);
     toast.success(result.message);
     router.push("/dashboard/siswa");
-    router.refresh();
   }
 
   return (

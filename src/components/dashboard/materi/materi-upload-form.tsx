@@ -234,7 +234,6 @@ export function MateriUploadForm({
             : "Pilih kelas atau siswa target bila ingin materi langsung diadaptasi.",
       });
       router.push(`/dashboard/materi/${result.materialId}`);
-      router.refresh();
     } finally {
       setRunning(false);
       setTahap("idle");
