@@ -493,3 +493,22 @@
   *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
   .reveal { opacity: 1; transform: none; }
 }
+
+/* Student area design tokens & accessibility overrides */
+:root {
+  --fitra-ink: #17352f;
+  --fitra-primary: #33635a;
+  --fitra-mint: #bfead4;
+  --fitra-peach: #ffd8bf;
+  --fitra-butter: #ffe9a6;
+  --fitra-sky: #cbe7f6;
+  --fitra-lavender: #ddd8fb;
+  --fitra-ease: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.student-surface button,
+.student-surface a,
+.student-surface input,
+.student-surface [role="button"] {
+  -webkit-tap-highlight-color: transparent;
+}

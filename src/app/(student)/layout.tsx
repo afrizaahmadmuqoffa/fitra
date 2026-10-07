@@ -25,32 +25,6 @@ export default function StudentLayout({ children }: { children: ReactNode }) {
       <main id="konten-utama" className="relative flex-1 pb-28 md:pb-12">
         {children}
       </main>
-      <style jsx global>{`
-        :root {
-          --fitra-ink: #17352f;
-          --fitra-primary: #33635a;
-          --fitra-mint: #bfead4;
-          --fitra-peach: #ffd8bf;
-          --fitra-butter: #ffe9a6;
-          --fitra-sky: #cbe7f6;
-          --fitra-lavender: #ddd8fb;
-          --fitra-ease: cubic-bezier(0.23, 1, 0.32, 1);
-        }
-        .student-surface button,
-        .student-surface a,
-        .student-surface input,
-        .student-surface [role="button"] {
-          -webkit-tap-highlight-color: transparent;
-        }
-        @media (prefers-reduced-motion: reduce) {
-          *, *::before, *::after {
-            scroll-behavior: auto !important;
-            animation-duration: 0.01ms !important;
-            animation-iteration-count: 1 !important;
-            transition-duration: 0.01ms !important;
-          }
-        }
-      `}</style>
     </div>
   );
 }
