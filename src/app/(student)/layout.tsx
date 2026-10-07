@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { StudentBackButton } from "@/components/student/student-back-button";
 import { StudentBackdrop } from "@/components/student/student-backdrop";
@@ -15,9 +16,14 @@ export default function StudentLayout({ children }: { children: ReactNode }) {
             href="/"
             className="ml-auto inline-flex items-center gap-2 rounded-2xl px-3 py-2 font-heading text-sm font-black tracking-tight text-[#17352f] transition-transform duration-160 ease-out hover:-translate-y-0.5 active:scale-[0.97]"
           >
-            <span className="grid size-8 place-items-center rounded-xl bg-[#33635a] text-white shadow-sm">
-              <span className="size-2.5 rounded-full bg-[#bfead4]" />
-            </span>
+            <Image
+              src="/logo.png"
+              alt=""
+              aria-hidden
+              width={32}
+              height={32}
+              className="size-8 rounded-[10px] bg-white shadow-[0_4px_10px_rgba(0,0,0,0.15)]"
+            />
             {APP_NAME}
           </Link>
         </div>

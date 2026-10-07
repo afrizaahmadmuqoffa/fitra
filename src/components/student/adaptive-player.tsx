@@ -18,6 +18,7 @@ import {
   ChevronRight,
   Ear,
   Keyboard,
+  Loader2,
   Mic,
   Pause,
   Play,
@@ -129,6 +130,7 @@ export function AdaptivePlayer({
   const [perluKonfirmasi, setPerluKonfirmasi] = React.useState<{ jawaban: string; kunci: string } | null>(null);
   const [scanEnabled, setScanEnabled] = React.useState(false);
   const [scanIndex, setScanIndex] = React.useState(0);
+  const [finishing, setFinishing] = React.useState(false);
 
   const modeBoundary = React.useRef(false);
   const batasTerakhir = React.useRef(0);
@@ -318,12 +320,13 @@ export function AdaptivePlayer({
     } catch { setListening(false); }
   }
 
-  function finish() {
+  async function finish() {
+    setFinishing(true);
     const correctCount = Object.values(answers).filter((item) => item.correct).length;
     const total = sections.filter((item) => item.interactions.length > 0).length;
     if (sessionId) {
       const durasi = Math.max(1, Math.round((waktuSekarang() - mulaiSesiRef.current) / 1000));
-      void completeLearningSessionAction({ token, sessionId, durationSeconds: durasi }).catch(() => {});
+      await completeLearningSessionAction({ token, sessionId, durationSeconds: durasi }).catch(() => {});
     }
     router.push(`${doneHref}?benar=${correctCount}&dijawab=${Object.keys(answers).length}&total=${total}`);
   }
@@ -533,7 +536,7 @@ export function AdaptivePlayer({
           <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
             <Button size="lg" variant="outline" className={`${TAP} rounded-2xl border-[#17352f]/10 bg-white/80 font-bold active:scale-[0.97] sm:w-auto`} disabled={index === 0} onClick={() => goToSection(Math.max(index - 1, 0))}><ArrowLeft className="size-5" /> Sebelumnya</Button>
             <div className="flex-1 text-center text-xs font-black uppercase tracking-[0.12em] text-[#17352f]/35">{answeredCount} jawaban · {correctCount} tepat</div>
-            {index === sections.length - 1 ? <Button size="lg" className={`${TAP} rounded-2xl bg-[#33635a] font-black text-white shadow-sm active:scale-[0.97] sm:min-w-44`} onClick={finish}>Selesai belajar <Check className="size-5" /></Button> : <Button size="lg" className={`${TAP} group rounded-2xl bg-[#33635a] font-black text-white shadow-sm active:scale-[0.97] sm:min-w-44`} onClick={() => goToSection(index + 1)}>Berikutnya <ArrowRight className="size-5 transition-transform duration-180 group-hover:translate-x-0.5" /></Button>}
+            {index === sections.length - 1 ? <Button size="lg" className={`${TAP} rounded-2xl bg-[#33635a] font-black text-white shadow-sm active:scale-[0.97] sm:min-w-44`} disabled={finishing} onClick={finish}>{finishing ? <Loader2 className="size-5 animate-spin" aria-hidden /> : <Check className="size-5" />} {finishing ? "Menyimpan…" : "Selesai belajar"}</Button> : <Button size="lg" className={`${TAP} group rounded-2xl bg-[#33635a] font-black text-white shadow-sm active:scale-[0.97] sm:min-w-44`} onClick={() => goToSection(index + 1)}>Berikutnya <ArrowRight className="size-5 transition-transform duration-180 group-hover:translate-x-0.5" /></Button>}
           </div>
         </main>
 
