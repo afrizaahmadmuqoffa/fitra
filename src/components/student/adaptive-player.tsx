@@ -398,7 +398,7 @@ export function AdaptivePlayer({
                 <span className="rounded-full bg-[#17352f] px-3 py-1.5 text-xs font-black uppercase tracking-[0.12em] text-white">Bagian {index + 1}</span>
                 {answered ? (
                   <span className={cn("inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-black", answered.correct ? "bg-[#e5f7ee] text-[#2f765b]" : "bg-[#fff1e8] text-[#8a5444]")}>{answered.correct ? <CheckCircle2 className="size-3.5" /> : <X className="size-3.5" />} {answered.correct ? "Tepat" : "Belum tepat"}</span>
-                ) : <span className="rounded-full bg-[#f4f2e8] px-3 py-1.5 text-xs font-black text-[#17352f]/45">Pelan-pelan ya</span>}
+                ) : null}
               </div>
 
               <h1 className="mt-5 max-w-3xl font-heading text-4xl font-black leading-[1.02] tracking-[-0.05em] text-[#17352f] sm:text-5xl">{section.title}</h1>
@@ -489,7 +489,7 @@ export function AdaptivePlayer({
           {interaction && !answered ? (
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {modes.speech ? <AnswerMode label={listening ? "Sedang mendengarkan…" : heard ? `Terdengar: ${heard}` : "Jawab dengan suara"} icon={<Mic className="size-5" />} active={listening} onClick={heard ? () => nilaiJawaban(heard, "suara") : startListening} /> : null}
-              {modes.keyboard ? <div className="rounded-[1.75rem] border border-white/80 bg-white/70 p-3 shadow-sm"><div className="flex items-center gap-2 px-2 pb-2 text-xs font-black uppercase tracking-[0.12em] text-[#17352f]/45"><Keyboard className="size-4" /> Jawab dengan ketikan</div><div className="flex gap-2"><Input value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="Ketik jawabanmu…" className="min-h-14 rounded-2xl border-[#17352f]/10 bg-white text-base font-semibold" aria-label="Ketik jawaban" /><Button size="lg" className={`${TAP} rounded-2xl bg-[#33635a] font-black text-white active:scale-[0.97]`} onClick={() => nilaiJawaban(typed, "ketik")}><Check className="size-5" /> Kirim</Button></div></div> : null}
+              {modes.keyboard ? <div className="col-span-full rounded-[1.75rem] border border-white/80 bg-white/70 p-3 shadow-sm"><div className="flex items-center gap-2 px-2 pb-2 text-xs font-black uppercase tracking-[0.12em] text-[#17352f]/45"><Keyboard className="size-4" /> Jawab dengan ketikan</div><div className="flex gap-2"><Input value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="Ketik jawabanmu…" className="min-h-14 flex-1 rounded-2xl border-[#17352f]/10 bg-white text-base font-semibold" aria-label="Ketik jawaban" /><Button size="lg" className={`${TAP} shrink-0 rounded-2xl bg-[#33635a] font-black text-white active:scale-[0.97]`} onClick={() => nilaiJawaban(typed, "ketik")}><Check className="size-5" /> Kirim</Button></div></div> : null}
             </div>
           ) : null}
 
@@ -547,10 +547,6 @@ export function AdaptivePlayer({
               <div className="mt-4 space-y-2">
                 {sections.map((item, itemIndex) => <button key={itemIndex} type="button" onClick={() => goToSection(itemIndex)} className={cn("flex w-full items-center gap-3 rounded-2xl p-3 text-left transition-transform duration-180 ease-out hover:-translate-y-0.5", itemIndex === index ? "bg-[#33635a] text-white" : answers[itemIndex] ? "bg-[#e5f7ee] text-[#17352f]" : "bg-[#f5f4ed] text-[#17352f]/62")}><span className="grid size-9 shrink-0 place-items-center rounded-xl bg-white/80 text-xs font-black">{itemIndex + 1}</span><span className="min-w-0 flex-1 truncate text-sm font-bold">{item.title}</span>{answers[itemIndex] ? <Check className="size-4" /> : null}</button>)}
               </div>
-            </div>
-            <div className="rounded-[2rem] bg-[#ffe9a6] p-5">
-              <div className="flex items-start justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-[0.14em] text-[#735d18]/65">Ingat</p><p className="mt-2 font-heading text-lg font-black text-[#5d511d]">Tidak harus cepat.</p></div><Sparkles className="size-6 text-[#735d18]" /></div>
-              <p className="mt-2 text-sm leading-6 text-[#735d18]/70">Yang penting kamu menemukan cara yang paling nyaman untuk memahami materi.</p>
             </div>
           </div>
         </aside>
