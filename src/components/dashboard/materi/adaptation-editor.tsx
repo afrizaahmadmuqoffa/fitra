@@ -751,18 +751,18 @@ export function AdaptationEditor({
                               )}
                             </div>
 
-                            {/* Tombol refresh fallback — muncul saat status ready tapi imageUrl belum ada */}
-                            {asset.status === "ready" && !asset.imageUrl ? (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => router.refresh()}
-                                className="w-full"
-                              >
-                                <RefreshCw className="size-3.5" aria-hidden />
-                                Muat ulang untuk menampilkan gambar
-                              </Button>
-                            ) : null}
+                            {/* Tombol refresh — selalu ada untuk sync imageUrl dari server */}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => router.refresh()}
+                              className="w-full"
+                            >
+                              <RefreshCw className="size-3.5" aria-hidden />
+                              {asset.status === "ready" && !asset.imageUrl
+                                ? "Muat ulang untuk menampilkan gambar"
+                                : "Muat ulang gambar"}
+                            </Button>
 
                             <div>
                               <Label htmlFor={`alt-${sectionIndex}`}>
