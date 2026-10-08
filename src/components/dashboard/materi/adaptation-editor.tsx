@@ -13,6 +13,7 @@ import {
   confirmVisualUploadAction,
   createVisualUploadTicketAction,
   generateVisualAction,
+  getVisualAssetUrlAction,
   regenerateAdaptationAction,
   removeVisualAction,
 } from "@/actions/ai";
@@ -110,6 +111,7 @@ export function AdaptationEditor({
   const [previewOpen, setPreviewOpen] = React.useState(false);
   const [busy, setBusy] = React.useState<string | null>(null);
   const [uploading, setUploading] = React.useState<number | null>(null);
+  const [refreshing, setRefreshing] = React.useState<number | null>(null);
 
   // `router.refresh()` memuat ulang `initialAssets` dari database, tapi
   // `useState` hanya memakai nilainya saat komponen pertama kali mount.
@@ -168,6 +170,35 @@ export function AdaptationEditor({
 
   function assetFor(sectionIndex: number) {
     return assets.find((asset) => asset.sectionIndex === sectionIndex) ?? null;
+  }
+
+  async function refreshVisual(sectionIndex: number) {
+    const asset = assetFor(sectionIndex);
+    if (!asset) return;
+    setRefreshing(sectionIndex);
+    try {
+      const hasil = await jalankanAction(() => getVisualAssetUrlAction(asset.id));
+      if (!hasil.ok) {
+        toast.error("Gagal memuat URL gambar", { description: hasil.message });
+        return;
+      }
+      if (hasil.imageUrl) {
+        setAssets((current) =>
+          current.map((a) =>
+            a.sectionIndex === sectionIndex
+              ? { ...a, imageUrl: hasil.imageUrl!, status: (hasil.status as typeof a.status) ?? a.status }
+              : a,
+          ),
+        );
+        toast.success("Gambar dimuat");
+      } else {
+        toast.info("Gambar belum tersedia", {
+          description: `Status: ${hasil.status ?? "tidak diketahui"}. Coba generate ulang bila status bukan "ready".`,
+        });
+      }
+    } finally {
+      setRefreshing(null);
+    }
   }
 
   async function regenerateVisual(sectionIndex: number) {
@@ -755,10 +786,15 @@ export function AdaptationEditor({
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => router.refresh()}
+                              disabled={refreshing === sectionIndex}
+                              onClick={() => refreshVisual(sectionIndex)}
                               className="w-full"
                             >
-                              <RefreshCw className="size-3.5" aria-hidden />
+                              {refreshing === sectionIndex ? (
+                                <Loader2 className="size-3.5 animate-spin" aria-hidden />
+                              ) : (
+                                <RefreshCw className="size-3.5" aria-hidden />
+                              )}
                               {asset.status === "ready" && !asset.imageUrl
                                 ? "Muat ulang untuk menampilkan gambar"
                                 : "Muat ulang gambar"}

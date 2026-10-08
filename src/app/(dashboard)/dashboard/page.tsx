@@ -126,14 +126,14 @@ export default async function DashboardPage() {
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="border-border/80 lg:col-span-2">
-          <CardHeader className="flex-row items-start justify-between gap-3 space-y-0">
+          <CardHeader className="relative space-y-0 pb-3">
             <div>
               <CardTitle className="text-base">Belajar Terbaru</CardTitle>
               <p className="mt-1 text-sm text-muted-foreground">
                 Sesi siswa yang baru saja berjalan di kelas Anda.
               </p>
             </div>
-            <Button variant="ghost" size="sm" asChild className="ml-auto shrink-0">
+            <Button variant="ghost" size="sm" asChild className="absolute right-4 top-4">
               <Link href="/dashboard/progres">
                 Lihat progres
                 <ArrowRight />

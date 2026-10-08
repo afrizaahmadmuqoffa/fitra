@@ -886,3 +886,48 @@ export async function confirmVisualUploadAction(
     return gagal("Gagal menyimpan ilustrasi.");
   }
 }
+
+/**
+ * Ambil signed URL terbaru untuk satu aset visual.
+ *
+ * Dipanggil langsung dari client untuk refresh gambar tanpa full
+ * router.refresh() — menghindari full page re-render dan tidak bisa di-spam
+ * karena tombol disabled selama pending.
+ */
+export async function getVisualAssetUrlAction(
+  assetId: string,
+): Promise<ActionResult & { imageUrl?: string; status?: string }> {
+  try {
+    const context = await requireAuthContext();
+    const [aset] = await withRlsDb(context.claims, async (tx) =>
+      tx
+        .select({
+          id: visualAssets.id,
+          storagePath: visualAssets.storagePath,
+          status: visualAssets.status,
+        })
+        .from(visualAssets)
+        .where(eq(visualAssets.id, assetId))
+        .limit(1),
+    );
+
+    if (!aset) return gagal("Aset gambar tidak ditemukan.");
+    if (!aset.storagePath) {
+      return { ok: true, status: aset.status, message: "Gambar belum tersedia." };
+    }
+
+    const { createSupabaseServiceClient } = await import("@/lib/supabase/service");
+    const { data, error } = await createSupabaseServiceClient()
+      .storage.from(BUCKET_VISUAL)
+      .createSignedUrl(aset.storagePath, 3600);
+
+    if (error || !data?.signedUrl) {
+      return gagal("Gagal membuat URL pratinjau gambar.");
+    }
+
+    return { ok: true, imageUrl: data.signedUrl, status: aset.status, message: "URL gambar diperbarui." };
+  } catch (error) {
+    catatGalat("getVisualAssetUrl", error);
+    return gagal("Gagal memuat URL gambar.");
+  }
+}
