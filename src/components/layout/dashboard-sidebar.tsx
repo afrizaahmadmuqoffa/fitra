@@ -34,8 +34,10 @@ function getCollapsedServerSnapshot() {
 
 export function DashboardSidebar({
   onNavigate,
+  mobile = false,
 }: {
   onNavigate?: () => void;
+  mobile?: boolean;
 }) {
   const pathname = usePathname();
   const collapsed = React.useSyncExternalStore(
@@ -53,8 +55,9 @@ export function DashboardSidebar({
   return (
     <div
       className={cn(
-        "flex h-full flex-col border-r border-sidebar-border bg-sidebar transition-[width] duration-200",
-        collapsed ? "w-[var(--spacing-sidebar-collapsed)]" : "w-[var(--spacing-sidebar)]",
+        "flex h-full flex-col bg-sidebar transition-[width] duration-200",
+        mobile ? "w-full" : "border-r border-sidebar-border",
+        !mobile && (collapsed ? "w-[var(--spacing-sidebar-collapsed)]" : "w-[var(--spacing-sidebar)]"),
       )}
     >
       <div

@@ -1,9 +1,8 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Loader2, MoreHorizontal, Pencil, Trash2, TriangleAlert } from "lucide-react";
+import { Loader2, Trash2, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,24 +13,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { deleteStudentAction } from "@/actions/students";
 import { jalankanAction } from "@/lib/action-helpers";
 import type { Student } from "@/db/types";
 
 /**
- * Aksi siswa pada halaman detail: ubah data siswa dan hapus.
- *
- * Menghapus siswa bersifat permanen dan berantai: profil belajar,
- * keanggotaan kelas, versi adaptasi, token QR, serta riwayat belajar dan
- * progres ikut terhapus. Karena itu konfirmasi menyebutkan semua konsekuensinya.
+ * Tombol hapus siswa — ditampilkan langsung tanpa dropdown.
+ * Konfirmasi tetap muncul sebelum data dihapus permanen.
  */
 export function StudentActions({ student }: { student: Student }) {
   const router = useRouter();
@@ -55,31 +43,14 @@ export function StudentActions({ student }: { student: Student }) {
 
   return (
     <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="outline" aria-label={`Kelola ${student.fullName}`}>
-            <MoreHorizontal aria-hidden />
-            Kelola
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56">
-          <DropdownMenuLabel>Aksi siswa</DropdownMenuLabel>
-          <DropdownMenuItem asChild>
-            <Link href={`/dashboard/siswa/${student.id}/ubah`}>
-              <Pencil aria-hidden />
-              Ubah data siswa
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            variant="destructive"
-            onSelect={() => setDeleteOpen(true)}
-          >
-            <Trash2 aria-hidden />
-            Hapus siswa
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <Button
+        variant="destructive"
+        onClick={() => setDeleteOpen(true)}
+        aria-label={`Hapus ${student.fullName}`}
+      >
+        <Trash2 aria-hidden />
+        Hapus siswa
+      </Button>
 
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <DialogContent className="sm:max-w-md">

@@ -162,12 +162,6 @@ export default async function StudentDetailPage({
           </div>
 
           <div className="flex flex-wrap gap-2">
-<Button asChild>
-              <Link href={`/dashboard/siswa/${student.id}/ubah`}>
-                <PencilLine />
-                Ubah data siswa
-              </Link>
-            </Button>
             <Button variant="outline" asChild>
               <Link href={`/dashboard/progres/${student.id}`}>
                 <ChartNoAxesColumn />
@@ -178,6 +172,12 @@ export default async function StudentDetailPage({
               <Link href="/dashboard/ppi/baru">
                 <FileText />
                 Susun PPI
+              </Link>
+            </Button>
+            <Button asChild>
+              <Link href={`/dashboard/siswa/${student.id}/ubah`}>
+                <PencilLine />
+                Ubah data siswa
               </Link>
             </Button>
             <StudentActions student={student} />

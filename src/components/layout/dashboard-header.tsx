@@ -97,9 +97,9 @@ export function DashboardHeader({
             <Menu />
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="w-[min(17rem,84vw)] p-0">
+        <SheetContent side="left" className="w-[min(17rem,84vw)] p-0 bg-sidebar">
           <SheetTitle className="sr-only">Menu Guru</SheetTitle>
-          <DashboardSidebar onNavigate={() => setOpen(false)} />
+          <DashboardSidebar mobile onNavigate={() => setOpen(false)} />
         </SheetContent>
       </Sheet>
 
